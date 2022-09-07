@@ -994,6 +994,11 @@ namespace ts {
                 nodeVisitor(node.statement, visitor, isStatement, context.factory.liftToBlock));
         },
 
+        [SyntaxKind.CrapStatement]: function visitEachChildOfCrapStatement(node, visitor, context, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+            return context.factory.updateCrapStatement(node, nodeVisitor(node.body, visitor, isStatement));
+        },
+
+
         [SyntaxKind.SwitchStatement]: function visitEachChildOfSwitchStatement(node, visitor, context, _nodesVisitor, nodeVisitor, _tokenVisitor) {
             return context.factory.updateSwitchStatement(node,
                 nodeVisitor(node.expression, visitor, isExpression),

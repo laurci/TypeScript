@@ -1480,6 +1480,8 @@ namespace ts {
                         return emitReturnStatement(node as ReturnStatement);
                     case SyntaxKind.WithStatement:
                         return emitWithStatement(node as WithStatement);
+                    case SyntaxKind.CrapStatement:
+                        return emitCrapStatement(node as CrapStatement);
                     case SyntaxKind.SwitchStatement:
                         return emitSwitchStatement(node as SwitchStatement);
                     case SyntaxKind.LabeledStatement:
@@ -3102,6 +3104,9 @@ namespace ts {
             emitExpression(node.expression);
             emitTokenWithComment(SyntaxKind.CloseParenToken, node.expression.end, writePunctuation, node);
             emitEmbeddedStatement(node, node.statement);
+        }
+
+        function emitCrapStatement(_node: CrapStatement) {
         }
 
         function emitSwitchStatement(node: SwitchStatement) {

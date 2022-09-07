@@ -39620,6 +39620,12 @@ namespace ts {
             }
         }
 
+        function checkCrapStatement(node: CrapStatement) {
+            checkGrammarStatementInAmbientContext(node);
+            checkSourceElement(node.body);
+        }
+
+
         function checkSwitchStatement(node: SwitchStatement) {
             // Grammar checking
             checkGrammarStatementInAmbientContext(node);
@@ -41947,6 +41953,8 @@ namespace ts {
                     return checkReturnStatement(node as ReturnStatement);
                 case SyntaxKind.WithStatement:
                     return checkWithStatement(node as WithStatement);
+                case SyntaxKind.CrapStatement:
+                    return checkCrapStatement(node as CrapStatement);
                 case SyntaxKind.SwitchStatement:
                     return checkSwitchStatement(node as SwitchStatement);
                 case SyntaxKind.LabeledStatement:

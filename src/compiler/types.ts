@@ -145,6 +145,7 @@ namespace ts {
         TypeOfKeyword,
         VarKeyword,
         VoidKeyword,
+        CrapKeyword,
         WhileKeyword,
         WithKeyword,
         // Strict mode reserved words
@@ -294,6 +295,7 @@ namespace ts {
         ContinueStatement,
         BreakStatement,
         ReturnStatement,
+        CrapStatement,
         WithStatement,
         SwitchStatement,
         LabeledStatement,
@@ -627,6 +629,7 @@ namespace ts {
         | SyntaxKind.UnknownKeyword
         | SyntaxKind.VarKeyword
         | SyntaxKind.VoidKeyword
+        | SyntaxKind.CrapKeyword
         | SyntaxKind.WhileKeyword
         | SyntaxKind.WithKeyword
         | SyntaxKind.YieldKeyword
@@ -1026,6 +1029,7 @@ namespace ts {
         | BreakStatement
         | ReturnStatement
         | WithStatement
+        | CrapStatement
         | SwitchStatement
         | LabeledStatement
         | ThrowStatement
@@ -1105,6 +1109,7 @@ namespace ts {
         | ContinueStatement
         | ReturnStatement
         | WithStatement
+        | CrapStatement
         | SwitchStatement
         | LabeledStatement
         | ThrowStatement
@@ -3137,6 +3142,11 @@ namespace ts {
         readonly kind: SyntaxKind.WithStatement;
         readonly expression: Expression;
         readonly statement: Statement;
+    }
+
+    export interface CrapStatement extends Statement {
+        readonly kind: SyntaxKind.CrapStatement;
+        readonly body: Statement;
     }
 
     export interface SwitchStatement extends Statement {
@@ -7909,6 +7919,8 @@ namespace ts {
         updateReturnStatement(node: ReturnStatement, expression: Expression | undefined): ReturnStatement;
         createWithStatement(expression: Expression, statement: Statement): WithStatement;
         updateWithStatement(node: WithStatement, expression: Expression, statement: Statement): WithStatement;
+        createCrapStatement(body: Statement): CrapStatement;
+        updateCrapStatement(node: CrapStatement, body: Statement): CrapStatement;
         createSwitchStatement(expression: Expression, caseBlock: CaseBlock): SwitchStatement;
         updateSwitchStatement(node: SwitchStatement, expression: Expression, caseBlock: CaseBlock): SwitchStatement;
         createLabeledStatement(label: string | Identifier, statement: Statement): LabeledStatement;

@@ -258,6 +258,8 @@ namespace ts {
             updateReturnStatement,
             createWithStatement,
             updateWithStatement,
+            createCrapStatement,
+            updateCrapStatement,
             createSwitchStatement,
             updateSwitchStatement,
             createLabeledStatement,
@@ -3505,6 +3507,22 @@ namespace ts {
             return node.expression !== expression
                 || node.statement !== statement
                 ? update(createWithStatement(expression, statement), node)
+                : node;
+        }
+
+        // @api
+        function createCrapStatement(body: Statement) {
+            const node = createBaseNode<CrapStatement>(SyntaxKind.CrapStatement);
+            node.body = asEmbeddedStatement(body);
+            node.transformFlags |= propagateChildFlags(node.body);
+
+            return node;
+        }
+
+        // @api
+        function updateCrapStatement(node: CrapStatement, body: Statement) {
+            return node.body !== body
+                ? update(createCrapStatement(body), node)
                 : node;
         }
 

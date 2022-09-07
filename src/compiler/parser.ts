@@ -465,6 +465,9 @@ namespace ts {
             return visitNode(cbNode, node.expression) ||
                 visitNode(cbNode, node.statement);
         },
+        [SyntaxKind.CrapStatement]: function forEachChildInCrapStatement<T>(node: CrapStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
+            return visitNode(cbNode, node.body);
+        },
         [SyntaxKind.SwitchStatement]: function forEachChildInSwitchStatement<T>(node: SwitchStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
             return visitNode(cbNode, node.expression) ||
                 visitNode(cbNode, node.caseBlock);
@@ -6339,6 +6342,15 @@ namespace ts {
             return withJSDoc(finishNode(factory.createWhileStatement(expression, statement), pos), hasJSDoc);
         }
 
+        function parseCrapStatement(): CrapStatement {
+            const pos = getNodePos();
+            const hasJSDoc = hasPrecedingJSDocComment();
+            parseExpected(SyntaxKind.CrapKeyword);
+
+            const body = parseStatement();
+            return withJSDoc(finishNode(factory.createCrapStatement(body), pos), hasJSDoc);
+        }
+
         function parseForOrForInOrForOfStatement(): Statement {
             const pos = getNodePos();
             const hasJSDoc = hasPrecedingJSDocComment();
@@ -6677,6 +6689,7 @@ namespace ts {
                 case SyntaxKind.BreakKeyword:
                 case SyntaxKind.ReturnKeyword:
                 case SyntaxKind.WithKeyword:
+                case SyntaxKind.CrapKeyword:
                 case SyntaxKind.SwitchKeyword:
                 case SyntaxKind.ThrowKeyword:
                 case SyntaxKind.TryKeyword:
@@ -6763,6 +6776,8 @@ namespace ts {
                     return parseReturnStatement();
                 case SyntaxKind.WithKeyword:
                     return parseWithStatement();
+                case SyntaxKind.CrapKeyword:
+                    return parseCrapStatement();
                 case SyntaxKind.SwitchKeyword:
                     return parseSwitchStatement();
                 case SyntaxKind.ThrowKeyword:
