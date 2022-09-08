@@ -39622,6 +39622,21 @@ namespace ts {
 
         function checkCrapStatement(node: CrapStatement) {
             checkGrammarStatementInAmbientContext(node);
+
+            for(const expr of node.expressions) {
+                checkExpression(expr);
+            }
+
+            checkSourceElement(node.body);
+        }
+
+        function checkDeferStatement(node: DeferStatement) {
+            checkGrammarStatementInAmbientContext(node);
+
+            if(!isFunctionBlock(node.parent)) {
+                error(node, Diagnostics.Defer_statements_can_only_be_used_within_a_function_body);
+            }
+
             checkSourceElement(node.body);
         }
 
@@ -41955,6 +41970,8 @@ namespace ts {
                     return checkWithStatement(node as WithStatement);
                 case SyntaxKind.CrapStatement:
                     return checkCrapStatement(node as CrapStatement);
+                case SyntaxKind.DeferStatement:
+                    return checkDeferStatement(node as DeferStatement);
                 case SyntaxKind.SwitchStatement:
                     return checkSwitchStatement(node as SwitchStatement);
                 case SyntaxKind.LabeledStatement:

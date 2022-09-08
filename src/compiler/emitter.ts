@@ -1482,6 +1482,8 @@ namespace ts {
                         return emitWithStatement(node as WithStatement);
                     case SyntaxKind.CrapStatement:
                         return emitCrapStatement(node as CrapStatement);
+                    case SyntaxKind.DeferStatement:
+                        return emitDeferStatement(node as DeferStatement);
                     case SyntaxKind.SwitchStatement:
                         return emitSwitchStatement(node as SwitchStatement);
                     case SyntaxKind.LabeledStatement:
@@ -3107,6 +3109,10 @@ namespace ts {
         }
 
         function emitCrapStatement(_node: CrapStatement) {
+        }
+
+        function emitDeferStatement(_node: DeferStatement) {
+            // don't emit defer statements. they are handled by the transformer
         }
 
         function emitSwitchStatement(node: SwitchStatement) {

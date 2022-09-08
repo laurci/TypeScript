@@ -47,6 +47,8 @@ namespace ts {
 
         addRange(transformers, customTransformers && map(customTransformers.before, wrapScriptTransformerFactory));
 
+        transformers.push(transformCustomSyntax);
+
         transformers.push(transformTypeScript);
         transformers.push(transformLegacyDecorators);
         transformers.push(transformClassFields);

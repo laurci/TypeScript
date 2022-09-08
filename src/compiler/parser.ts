@@ -466,6 +466,9 @@ namespace ts {
                 visitNode(cbNode, node.statement);
         },
         [SyntaxKind.CrapStatement]: function forEachChildInCrapStatement<T>(node: CrapStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
+            return node.expressions.map(expr => visitNode(cbNode, expr)).reduce((prev, curr) => prev || curr) || visitNode(cbNode, node.body);
+        },
+        [SyntaxKind.DeferStatement]: function forEachChildInDeferStatement<T>(node: DeferStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
             return visitNode(cbNode, node.body);
         },
         [SyntaxKind.SwitchStatement]: function forEachChildInSwitchStatement<T>(node: SwitchStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
@@ -6347,8 +6350,35 @@ namespace ts {
             const hasJSDoc = hasPrecedingJSDocComment();
             parseExpected(SyntaxKind.CrapKeyword);
 
+            const openBracketPosition = scanner.getTokenPos();
+            const openBracketParsed = parseExpected(SyntaxKind.OpenBracketToken);
+
+            const expressions: Expression[] = [];
+            while(true) {
+                expressions.push(parseExpression());
+
+                const comma = parseOptional(SyntaxKind.CommaToken);
+                if(!comma) {
+                    break;
+                }
+            }
+
+            parseExpectedMatchingBrackets(SyntaxKind.OpenBracketToken, SyntaxKind.CloseBracketToken, openBracketParsed, openBracketPosition);
+
             const body = parseStatement();
-            return withJSDoc(finishNode(factory.createCrapStatement(body), pos), hasJSDoc);
+
+            // FIXME: better handle of expression statement
+            return withJSDoc(finishNode(factory.createCrapStatement(expressions, body), pos), hasJSDoc);
+        }
+
+        function parseDeferStatement(): DeferStatement {
+            const pos = getNodePos();
+            const hasJSDoc = hasPrecedingJSDocComment();
+            parseExpected(SyntaxKind.DeferKeyword);
+
+            const body = parseStatement();
+
+            return withJSDoc(finishNode(factory.createDeferStatement(body), pos), hasJSDoc);
         }
 
         function parseForOrForInOrForOfStatement(): Statement {
@@ -6690,6 +6720,7 @@ namespace ts {
                 case SyntaxKind.ReturnKeyword:
                 case SyntaxKind.WithKeyword:
                 case SyntaxKind.CrapKeyword:
+                case SyntaxKind.DeferKeyword:
                 case SyntaxKind.SwitchKeyword:
                 case SyntaxKind.ThrowKeyword:
                 case SyntaxKind.TryKeyword:
@@ -6778,6 +6809,8 @@ namespace ts {
                     return parseWithStatement();
                 case SyntaxKind.CrapKeyword:
                     return parseCrapStatement();
+                case SyntaxKind.DeferKeyword:
+                    return parseDeferStatement();
                 case SyntaxKind.SwitchKeyword:
                     return parseSwitchStatement();
                 case SyntaxKind.ThrowKeyword:
