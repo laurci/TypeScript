@@ -11,47 +11,60 @@ namespace ts {
         return callDeferFunction;
     }
 
+    function insertDeferCall(statements: Statement[], callDeferFunction: Statement) {
+        const returnStatementIndex = statements.findIndex(statement => isReturnStatement(statement));
+
+        if(returnStatementIndex > -1) {
+            const beforeReturnStatements = statements.slice(0, returnStatementIndex);
+            const afterReturnStatements = statements.slice(returnStatementIndex);
+
+            return [...beforeReturnStatements, callDeferFunction, ...afterReturnStatements];
+        }
+
+        return statements;
+    }
+
+    function getBlockVisitor(callDeferFunction: Statement, context: TransformationContext) {
+        const v = (node: Node): Node => {
+            if(isBlock(node) && !isFunctionBlock(node)) {
+                const newStatements = insertDeferCall(Array.from(node.statements), callDeferFunction);
+                return visitEachChild(context.factory.createBlock(newStatements), v, context);
+            }
+
+            return visitEachChild(node, v, context);
+        };
+        return v;
+    };
+
     export function transformCustomSyntax(context: TransformationContext) {
         return (sourceFile: SourceFile) => {
-
-            const visitBlock = (callDeferFunction: Statement) => (node: Node): Node => {
-                if(isBlock(node) && !isFunctionBlock(node)) {
-                    const returnStatementIndex = node.statements.findIndex(statement => isReturnStatement(statement));
-                    if(returnStatementIndex > -1) {
-                        const beforeReturnStatements = node.statements.slice(0, returnStatementIndex);
-                        const afterReturnStatements = node.statements.slice(returnStatementIndex);
-
-
-
-                        return visitEachChild(context.factory.createBlock([...beforeReturnStatements, callDeferFunction, ...afterReturnStatements]), visitBlock(callDeferFunction), context);
-                    }
-                }
-
-                return visitEachChild(node, visitBlock(callDeferFunction), context);
-            };
-
             const visitor = (node: Node): VisitResult<Node> => {
                 if(isFunctionBody(node)) {
-                    const isAsync = isAsyncFunction(node.parent);
-
                     const deferStatements = node.statements.filter(statement => isDeferStatement(statement)) as DeferStatement[];
-                    const deferredContent = deferStatements.map(x => x.body);
-                    const deferFunction = context.factory.createFunctionDeclaration(isAsync ? [context.factory.createModifier(SyntaxKind.AsyncKeyword)] : [], /*asteriskToken*/ undefined, "__defer", [], [], /*type*/ undefined, context.factory.createBlock(deferredContent));
-
-                    const callDeferFunction = getDeferCallExpression(context.factory, isAsync);
 
                     if(deferStatements.length > 0) {
-                        const statements = node.statements.filter(statement => !isDeferStatement(statement)).map(statement => visitBlock(callDeferFunction)(statement) as Statement);
+                        const isAsync = isAsyncFunction(node.parent);
 
-                        const returnStatementIndex = statements.findIndex(statement => isReturnStatement(statement));
+                        const deferredContent = deferStatements.map(x => x.body);
+                        const deferFunction = context.factory.createFunctionDeclaration(
+                            isAsync ? [context.factory.createModifier(SyntaxKind.AsyncKeyword)] : [],
+                            /*asteriskToken*/ undefined,
+                            "__defer",
+                            [],
+                            [],
+                            /*type*/ undefined,
+                            context.factory.createBlock(deferredContent, /*multiLine*/ true)
+                        );
 
-                        const beforeReturnStatements = statements.slice(0, returnStatementIndex);
-                        const afterReturnStatements = statements.slice(returnStatementIndex);
+                        const callDeferFunction = getDeferCallExpression(context.factory, isAsync);
+                        const blockVisitor = getBlockVisitor(callDeferFunction, context);
+
+
+                        const statements = node.statements.filter(statement => !isDeferStatement(statement)).map(statement => blockVisitor(statement) as Statement);
+                        const newStatements = insertDeferCall(statements, callDeferFunction);
 
                         return context.factory.updateBlock(node, [
-                            ...beforeReturnStatements,
-                            callDeferFunction,
-                            ...afterReturnStatements,
+                            ...newStatements,
                             deferFunction
                         ]);
                     }
