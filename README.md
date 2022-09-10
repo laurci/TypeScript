@@ -5,4 +5,4 @@ This repository is a fork of [TypeScript](https://github.com/microsoft/TypeScrip
 There are no docs yet, but you can checkout some examples [here](https://github.com/laurci/ts-fork-demos).
 
 Some features that I implemented:
-- `defer` statements (https://github.com/laurci/ts-fork-demos/tree/master/examples/defer)
+- [`defer` statements](https://github.com/laurci/ts-fork-demos/tree/master/examples/defer)
