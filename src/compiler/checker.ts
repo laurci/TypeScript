@@ -11780,6 +11780,12 @@ namespace ts {
                 return mapType(type as UnionType, getLowerBoundOfKeyType);
             }
             if (type.flags & TypeFlags.Intersection) {
+                // Similarly to getTypeFromIntersectionTypeNode, we preserve the special string & {}, number & {},
+                // and bigint & {} intersections that are used to prevent subtype reduction in union types.
+                const types = (type as IntersectionType).types;
+                if (types.length === 2 && !!(types[0].flags & (TypeFlags.String | TypeFlags.Number | TypeFlags.BigInt)) && types[1] === emptyTypeLiteralType) {
+                    return type;
+                }
                 return getIntersectionType(sameMap((type as UnionType).types, getLowerBoundOfKeyType));
             }
             return type;
@@ -19821,8 +19827,8 @@ namespace ts {
                         const skipTrue = !isTypeAssignableTo(getPermissiveInstantiation(c.checkType), getPermissiveInstantiation(c.extendsType));
                         const skipFalse = !skipTrue && isTypeAssignableTo(getRestrictiveInstantiation(c.checkType), getRestrictiveInstantiation(c.extendsType));
                         // TODO: Find a nice way to include potential conditional type breakdowns in error output, if they seem good (they usually don't)
-                        if (result = skipTrue ? Ternary.True : isRelatedTo(source, getTrueTypeFromConditionalType(c), RecursionFlags.Target, /*reportErrors*/ false)) {
-                            result &= skipFalse ? Ternary.True : isRelatedTo(source, getFalseTypeFromConditionalType(c), RecursionFlags.Target, /*reportErrors*/ false);
+                        if (result = skipTrue ? Ternary.True : isRelatedTo(source, getTrueTypeFromConditionalType(c), RecursionFlags.Target, /*reportErrors*/ false, /*headMessage*/ undefined, intersectionState)) {
+                            result &= skipFalse ? Ternary.True : isRelatedTo(source, getFalseTypeFromConditionalType(c), RecursionFlags.Target, /*reportErrors*/ false, /*headMessage*/ undefined, intersectionState);
                             if (result) {
                                 return result;
                             }
@@ -45800,7 +45806,7 @@ namespace ts {
             }
 
             const nodeArguments = node.arguments;
-            if (moduleKind !== ModuleKind.ESNext && moduleKind !== ModuleKind.NodeNext) {
+            if (moduleKind !== ModuleKind.ESNext && moduleKind !== ModuleKind.NodeNext && moduleKind !== ModuleKind.Node16) {
                 // We are allowed trailing comma after proposal-import-assertions.
                 checkGrammarForDisallowedTrailingComma(nodeArguments);
 
