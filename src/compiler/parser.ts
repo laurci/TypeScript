@@ -466,7 +466,8 @@ namespace ts {
                 visitNode(cbNode, node.statement);
         },
         [SyntaxKind.UseStatement]: function forEachChildInUseStatement<T>(node: UseStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
-            return node.expressions.map(expr => visitNode(cbNode, expr)).reduce((prev, curr) => prev || curr) || visitNode(cbNode, node.body);
+            const expr = node.expressions.map(expr => visitNode(cbNode, expr));
+            return expr.reduce((prev, curr) => prev || curr, expr[0]) || visitNode(cbNode, node.body);
         },
         [SyntaxKind.DeferStatement]: function forEachChildInDeferStatement<T>(node: DeferStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
             return visitNode(cbNode, node.body);
@@ -6345,27 +6346,50 @@ namespace ts {
             return withJSDoc(finishNode(factory.createWhileStatement(expression, statement), pos), hasJSDoc);
         }
 
+
+        function reduceUseExpression(expr: Expression): Expression[] {
+            if(isBinaryExpression(expr)) {
+                if(!isCommaToken(expr.operatorToken)) {
+                    parseErrorAtCurrentToken(Diagnostics.Expected_list_of_comma_separated_identifiers);
+                    return [];
+                }
+                return [...reduceUseExpression(expr.left), ...reduceUseExpression(expr.right)];
+            }
+
+            return [expr];
+        }
+
         function parseUseStatement(): UseStatement {
             const pos = getNodePos();
             const hasJSDoc = hasPrecedingJSDocComment();
             parseExpected(SyntaxKind.UseKeyword);
 
-            const openBracketPosition = scanner.getTokenPos();
-            const openBracketParsed = parseExpected(SyntaxKind.OpenBracketToken);
+            let expressions: Expression[] = [];
 
-            const expressions: Expression[] = [];
-            while(true) {
-                expressions.push(parseExpression());
+            const hasBracket = scanner.getToken() === SyntaxKind.OpenBracketToken;
 
-                const comma = parseOptional(SyntaxKind.CommaToken);
-                if(!comma) {
-                    break;
-                }
+            if(hasBracket) {
+                console.log("got multiple");
+
+                const openBracketParsed = parseExpected(SyntaxKind.OpenBracketToken);
+
+                const openBracketPosition = scanner.getTokenPos();
+
+                expressions = reduceUseExpression(parseExpression());
+
+                parseExpectedMatchingBrackets(SyntaxKind.OpenBracketToken, SyntaxKind.CloseBracketToken, !!openBracketParsed, openBracketPosition);
+            }
+            else {
+                expressions = reduceUseExpression(parseExpression());
             }
 
-            parseExpectedMatchingBrackets(SyntaxKind.OpenBracketToken, SyntaxKind.CloseBracketToken, openBracketParsed, openBracketPosition);
+            let body: Block | undefined;
+            const hasBlock  = scanner.getToken() === SyntaxKind.OpenBraceToken;
+            if(hasBlock) {
+                body = parseBlock(/*ignoreMissingOpenBrace*/ false);
+            }
 
-            const body = parseStatement();
+            console.log(body);
 
             // FIXME: better handle of expression statement
             return withJSDoc(finishNode(factory.createUseStatement(expressions, body), pos), hasJSDoc);

@@ -3152,7 +3152,7 @@ namespace ts {
     export interface UseStatement extends Statement {
         readonly kind: SyntaxKind.UseStatement;
         readonly expressions: Expression[];
-        readonly body: Statement;
+        readonly body?: Statement;
     }
 
     export interface DeferStatement extends Statement {
@@ -7930,8 +7930,8 @@ namespace ts {
         updateReturnStatement(node: ReturnStatement, expression: Expression | undefined): ReturnStatement;
         createWithStatement(expression: Expression, statement: Statement): WithStatement;
         updateWithStatement(node: WithStatement, expression: Expression, statement: Statement): WithStatement;
-        createUseStatement(expressions: Expression[], body: Statement): UseStatement;
-        updateUseStatement(node: UseStatement, expressions: Expression[], body: Statement): UseStatement;
+        createUseStatement(expressions: Expression[], body?: Statement): UseStatement;
+        updateUseStatement(node: UseStatement, expressions: Expression[], body?: Statement): UseStatement;
         createDeferStatement(body: Statement): DeferStatement;
         updateDeferStatement(node: DeferStatement, body: Statement): DeferStatement;
         createSwitchStatement(expression: Expression, caseBlock: CaseBlock): SwitchStatement;

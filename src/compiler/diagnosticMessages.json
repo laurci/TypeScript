@@ -1546,6 +1546,11 @@
         "category": "Error",
         "code": 1800
     },
+    "Expected list of comma separated identifiers": {
+        "category": "Error",
+        "code": 1801
+    },
+
 
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",
