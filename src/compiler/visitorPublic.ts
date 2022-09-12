@@ -994,8 +994,8 @@ namespace ts {
                 nodeVisitor(node.statement, visitor, isStatement, context.factory.liftToBlock));
         },
 
-        [SyntaxKind.CrapStatement]: function visitEachChildOfCrapStatement(node, visitor, context, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-            return context.factory.updateCrapStatement(node, node.expressions.map(expr => nodeVisitor(expr, visitor, isExpression)), nodeVisitor(node.body, visitor, isStatement));
+        [SyntaxKind.UseStatement]: function visitEachChildOfUseStatement(node, visitor, context, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+            return context.factory.updateUseStatement(node, node.expressions.map(expr => nodeVisitor(expr, visitor, isExpression)), nodeVisitor(node.body, visitor, isStatement));
         },
         [SyntaxKind.DeferStatement]: function visitEachChildOfDeferKeyword(node, visitor, context, _nodesVisitor, nodeVisitor, _tokenVisitor) {
             return context.factory.updateDeferStatement(node, nodeVisitor(node.body, visitor, isStatement));

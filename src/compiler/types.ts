@@ -145,7 +145,7 @@ namespace ts {
         TypeOfKeyword,
         VarKeyword,
         VoidKeyword,
-        CrapKeyword,
+        UseKeyword,
         DeferKeyword,
         WhileKeyword,
         WithKeyword,
@@ -296,7 +296,7 @@ namespace ts {
         ContinueStatement,
         BreakStatement,
         ReturnStatement,
-        CrapStatement,
+        UseStatement,
         DeferStatement,
         WithStatement,
         SwitchStatement,
@@ -631,7 +631,7 @@ namespace ts {
         | SyntaxKind.UnknownKeyword
         | SyntaxKind.VarKeyword
         | SyntaxKind.VoidKeyword
-        | SyntaxKind.CrapKeyword
+        | SyntaxKind.UseKeyword
         | SyntaxKind.DeferKeyword
         | SyntaxKind.WhileKeyword
         | SyntaxKind.WithKeyword
@@ -1032,7 +1032,7 @@ namespace ts {
         | BreakStatement
         | ReturnStatement
         | WithStatement
-        | CrapStatement
+        | UseStatement
         | DeferStatement
         | SwitchStatement
         | LabeledStatement
@@ -1113,7 +1113,7 @@ namespace ts {
         | ContinueStatement
         | ReturnStatement
         | WithStatement
-        | CrapStatement
+        | UseStatement
         | DeferStatement
         | SwitchStatement
         | LabeledStatement
@@ -3149,8 +3149,8 @@ namespace ts {
         readonly statement: Statement;
     }
 
-    export interface CrapStatement extends Statement {
-        readonly kind: SyntaxKind.CrapStatement;
+    export interface UseStatement extends Statement {
+        readonly kind: SyntaxKind.UseStatement;
         readonly expressions: Expression[];
         readonly body: Statement;
     }
@@ -7930,8 +7930,8 @@ namespace ts {
         updateReturnStatement(node: ReturnStatement, expression: Expression | undefined): ReturnStatement;
         createWithStatement(expression: Expression, statement: Statement): WithStatement;
         updateWithStatement(node: WithStatement, expression: Expression, statement: Statement): WithStatement;
-        createCrapStatement(expressions: Expression[], body: Statement): CrapStatement;
-        updateCrapStatement(node: CrapStatement, expressions: Expression[], body: Statement): CrapStatement;
+        createUseStatement(expressions: Expression[], body: Statement): UseStatement;
+        updateUseStatement(node: UseStatement, expressions: Expression[], body: Statement): UseStatement;
         createDeferStatement(body: Statement): DeferStatement;
         updateDeferStatement(node: DeferStatement, body: Statement): DeferStatement;
         createSwitchStatement(expression: Expression, caseBlock: CaseBlock): SwitchStatement;

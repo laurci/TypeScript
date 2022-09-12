@@ -258,8 +258,8 @@ namespace ts {
             updateReturnStatement,
             createWithStatement,
             updateWithStatement,
-            createCrapStatement,
-            updateCrapStatement,
+            createUseStatement,
+            updateUseStatement,
             createDeferStatement,
             updateDeferStatement,
             createSwitchStatement,
@@ -3513,8 +3513,8 @@ namespace ts {
         }
 
         // @api
-        function createCrapStatement(expressions: Expression[], body: Statement) {
-            const node = createBaseNode<CrapStatement>(SyntaxKind.CrapStatement);
+        function createUseStatement(expressions: Expression[], body: Statement) {
+            const node = createBaseNode<UseStatement>(SyntaxKind.UseStatement);
             node.expressions = expressions;
             node.body = asEmbeddedStatement(body);
             node.transformFlags |= propagateChildFlags(node.body);
@@ -3523,9 +3523,9 @@ namespace ts {
         }
 
         // @api
-        function updateCrapStatement(node: CrapStatement, expressions: Expression[], body: Statement) {
+        function updateUseStatement(node: UseStatement, expressions: Expression[], body: Statement) {
             return node.expressions.length !== expressions.length || node.expressions.some(expr => !expressions.includes(expr)) || node.body !== body
-                ? update(createCrapStatement(expressions, body), node)
+                ? update(createUseStatement(expressions, body), node)
                 : node;
         }
 

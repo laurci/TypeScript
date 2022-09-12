@@ -39626,7 +39626,7 @@ namespace ts {
             }
         }
 
-        function checkCrapStatement(node: CrapStatement) {
+        function checkUseStatement(node: UseStatement) {
             checkGrammarStatementInAmbientContext(node);
 
             for(const expr of node.expressions) {
@@ -41974,8 +41974,8 @@ namespace ts {
                     return checkReturnStatement(node as ReturnStatement);
                 case SyntaxKind.WithStatement:
                     return checkWithStatement(node as WithStatement);
-                case SyntaxKind.CrapStatement:
-                    return checkCrapStatement(node as CrapStatement);
+                case SyntaxKind.UseStatement:
+                    return checkUseStatement(node as UseStatement);
                 case SyntaxKind.DeferStatement:
                     return checkDeferStatement(node as DeferStatement);
                 case SyntaxKind.SwitchStatement:

@@ -1480,8 +1480,8 @@ namespace ts {
                         return emitReturnStatement(node as ReturnStatement);
                     case SyntaxKind.WithStatement:
                         return emitWithStatement(node as WithStatement);
-                    case SyntaxKind.CrapStatement:
-                        return emitCrapStatement(node as CrapStatement);
+                    case SyntaxKind.UseStatement:
+                        return emitUseStatement(node as UseStatement);
                     case SyntaxKind.DeferStatement:
                         return emitDeferStatement(node as DeferStatement);
                     case SyntaxKind.SwitchStatement:
@@ -3108,7 +3108,7 @@ namespace ts {
             emitEmbeddedStatement(node, node.statement);
         }
 
-        function emitCrapStatement(_node: CrapStatement) {
+        function emitUseStatement(_node: UseStatement) {
         }
 
         function emitDeferStatement(_node: DeferStatement) {

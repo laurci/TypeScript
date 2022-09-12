@@ -465,7 +465,7 @@ namespace ts {
             return visitNode(cbNode, node.expression) ||
                 visitNode(cbNode, node.statement);
         },
-        [SyntaxKind.CrapStatement]: function forEachChildInCrapStatement<T>(node: CrapStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
+        [SyntaxKind.UseStatement]: function forEachChildInUseStatement<T>(node: UseStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
             return node.expressions.map(expr => visitNode(cbNode, expr)).reduce((prev, curr) => prev || curr) || visitNode(cbNode, node.body);
         },
         [SyntaxKind.DeferStatement]: function forEachChildInDeferStatement<T>(node: DeferStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
@@ -6345,10 +6345,10 @@ namespace ts {
             return withJSDoc(finishNode(factory.createWhileStatement(expression, statement), pos), hasJSDoc);
         }
 
-        function parseCrapStatement(): CrapStatement {
+        function parseUseStatement(): UseStatement {
             const pos = getNodePos();
             const hasJSDoc = hasPrecedingJSDocComment();
-            parseExpected(SyntaxKind.CrapKeyword);
+            parseExpected(SyntaxKind.UseKeyword);
 
             const openBracketPosition = scanner.getTokenPos();
             const openBracketParsed = parseExpected(SyntaxKind.OpenBracketToken);
@@ -6368,7 +6368,7 @@ namespace ts {
             const body = parseStatement();
 
             // FIXME: better handle of expression statement
-            return withJSDoc(finishNode(factory.createCrapStatement(expressions, body), pos), hasJSDoc);
+            return withJSDoc(finishNode(factory.createUseStatement(expressions, body), pos), hasJSDoc);
         }
 
         function parseDeferStatement(): DeferStatement {
@@ -6719,7 +6719,7 @@ namespace ts {
                 case SyntaxKind.BreakKeyword:
                 case SyntaxKind.ReturnKeyword:
                 case SyntaxKind.WithKeyword:
-                case SyntaxKind.CrapKeyword:
+                case SyntaxKind.UseKeyword:
                 case SyntaxKind.DeferKeyword:
                 case SyntaxKind.SwitchKeyword:
                 case SyntaxKind.ThrowKeyword:
@@ -6807,8 +6807,8 @@ namespace ts {
                     return parseReturnStatement();
                 case SyntaxKind.WithKeyword:
                     return parseWithStatement();
-                case SyntaxKind.CrapKeyword:
-                    return parseCrapStatement();
+                case SyntaxKind.UseKeyword:
+                    return parseUseStatement();
                 case SyntaxKind.DeferKeyword:
                     return parseDeferStatement();
                 case SyntaxKind.SwitchKeyword:

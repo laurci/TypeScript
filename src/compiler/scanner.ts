@@ -156,7 +156,7 @@ namespace ts {
         void: SyntaxKind.VoidKeyword,
         while: SyntaxKind.WhileKeyword,
         with: SyntaxKind.WithKeyword,
-        crap: SyntaxKind.CrapKeyword,
+        use: SyntaxKind.UseKeyword,
         defer: SyntaxKind.DeferKeyword,
         yield: SyntaxKind.YieldKeyword,
         async: SyntaxKind.AsyncKeyword,

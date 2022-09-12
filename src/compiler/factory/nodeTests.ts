@@ -530,8 +530,8 @@ namespace ts {
         return node.kind === SyntaxKind.WithStatement;
     }
 
-    export function isCrapStatement(node: Node): node is CrapStatement {
-        return node.kind === SyntaxKind.CrapStatement;
+    export function isUseStatement(node: Node): node is UseStatement {
+        return node.kind === SyntaxKind.UseStatement;
     }
 
     export function isDeferStatement(node: Node): node is DeferStatement {
