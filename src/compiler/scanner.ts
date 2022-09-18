@@ -159,6 +159,7 @@ namespace ts {
         with: SyntaxKind.WithKeyword,
         use: SyntaxKind.UseKeyword,
         defer: SyntaxKind.DeferKeyword,
+        macro: SyntaxKind.MacroKeyword,
         yield: SyntaxKind.YieldKeyword,
         async: SyntaxKind.AsyncKeyword,
         await: SyntaxKind.AwaitKeyword,

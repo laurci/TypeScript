@@ -5045,6 +5045,7 @@ namespace ts {
             case SyntaxKind.ConstKeyword: return ModifierFlags.Const;
             case SyntaxKind.DefaultKeyword: return ModifierFlags.Default;
             case SyntaxKind.AsyncKeyword: return ModifierFlags.Async;
+            case SyntaxKind.MacroKeyword: return ModifierFlags.Macro;
             case SyntaxKind.ReadonlyKeyword: return ModifierFlags.Readonly;
             case SyntaxKind.OverrideKeyword: return ModifierFlags.Override;
             case SyntaxKind.InKeyword: return ModifierFlags.In;

@@ -2360,6 +2360,7 @@ namespace ts {
             return token() === SyntaxKind.ClassKeyword || token() === SyntaxKind.FunctionKeyword ||
                 token() === SyntaxKind.InterfaceKeyword ||
                 (token() === SyntaxKind.AbstractKeyword && lookAhead(nextTokenIsClassKeywordOnSameLine)) ||
+                (token() === SyntaxKind.MacroKeyword && lookAhead(nextTokenIsClassKeywordOnSameLine)) ||
                 (token() === SyntaxKind.AsyncKeyword && lookAhead(nextTokenIsFunctionKeywordOnSameLine));
         }
 
@@ -6050,6 +6051,7 @@ namespace ts {
                 case SyntaxKind.OpenBraceToken:
                     return parseObjectLiteralExpression();
                 case SyntaxKind.AsyncKeyword:
+                case SyntaxKind.MacroKeyword:
                     // Async arrow functions are parsed earlier in parseAssignmentExpressionOrHigher.
                     // If we encounter `async [no LineTerminator here] function` then this is an async
                     // function; otherwise, its an identifier.
@@ -6196,6 +6198,7 @@ namespace ts {
             const pos = getNodePos();
             const hasJSDoc = hasPrecedingJSDocComment();
             const modifiers = parseModifiers();
+
             parseExpected(SyntaxKind.FunctionKeyword);
             const asteriskToken = parseOptionalToken(SyntaxKind.AsteriskToken);
             const isGenerator = asteriskToken ? SignatureFlags.Yield : SignatureFlags.None;
@@ -6659,6 +6662,7 @@ namespace ts {
                     case SyntaxKind.AbstractKeyword:
                     case SyntaxKind.AccessorKeyword:
                     case SyntaxKind.AsyncKeyword:
+                    case SyntaxKind.MacroKeyword:
                     case SyntaxKind.DeclareKeyword:
                     case SyntaxKind.PrivateKeyword:
                     case SyntaxKind.ProtectedKeyword:
@@ -6743,6 +6747,7 @@ namespace ts {
                     return isStartOfDeclaration();
 
                 case SyntaxKind.AsyncKeyword:
+                case SyntaxKind.MacroKeyword:
                 case SyntaxKind.DeclareKeyword:
                 case SyntaxKind.InterfaceKeyword:
                 case SyntaxKind.ModuleKeyword:
@@ -6830,6 +6835,7 @@ namespace ts {
                 case SyntaxKind.AtToken:
                     return parseDeclaration();
                 case SyntaxKind.AsyncKeyword:
+                case SyntaxKind.MacroKeyword:
                 case SyntaxKind.InterfaceKeyword:
                 case SyntaxKind.TypeKeyword:
                 case SyntaxKind.ModuleKeyword:
@@ -7409,6 +7415,7 @@ namespace ts {
                 if (modifier.kind === SyntaxKind.StaticKeyword) hasSeenStatic = true;
                 list = append(list, modifier);
             }
+
             return list && createNodeArray(list, pos);
         }
 

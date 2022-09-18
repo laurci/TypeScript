@@ -39,6 +39,10 @@ namespace ts {
     export function transformCustomSyntax(context: TransformationContext) {
         return (sourceFile: SourceFile) => {
             const visitor = (node: Node): VisitResult<Node> => {
+                if(isFunctionDeclaration(node) && hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                    console.log("macro declaration", node.name?.escapedText);
+                }
+
                 if(isFunctionBody(node)) {
                     const deferStatements = node.statements.filter(statement => isDeferStatement(statement)) as DeferStatement[];
 

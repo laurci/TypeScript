@@ -167,6 +167,7 @@ namespace ts {
         AssertKeyword,
         AnyKeyword,
         AsyncKeyword,
+        MacroKeyword,
         AwaitKeyword,
         BooleanKeyword,
         ConstructorKeyword,
@@ -561,6 +562,7 @@ namespace ts {
         | SyntaxKind.AssertsKeyword
         | SyntaxKind.AssertKeyword
         | SyntaxKind.AsyncKeyword
+        | SyntaxKind.MacroKeyword
         | SyntaxKind.AwaitKeyword
         | SyntaxKind.BigIntKeyword
         | SyntaxKind.BooleanKeyword
@@ -644,6 +646,7 @@ namespace ts {
         | SyntaxKind.AbstractKeyword
         | SyntaxKind.AccessorKeyword
         | SyntaxKind.AsyncKeyword
+        | SyntaxKind.MacroKeyword
         | SyntaxKind.ConstKeyword
         | SyntaxKind.DeclareKeyword
         | SyntaxKind.DefaultKeyword
@@ -838,6 +841,7 @@ namespace ts {
         In =                 1 << 15, // Contravariance modifier
         Out =                1 << 16, // Covariance modifier
         Decorator =          1 << 17, // Contains a decorator.
+        Macro =              1 << 18, // Represents a macro.
         HasComputedFlags =   1 << 29, // Modifier flags have been computed
 
         AccessibilityModifier = Public | Private | Protected,
@@ -1349,6 +1353,7 @@ namespace ts {
     export type AbstractKeyword = ModifierToken<SyntaxKind.AbstractKeyword>;
     export type AccessorKeyword = ModifierToken<SyntaxKind.AccessorKeyword>;
     export type AsyncKeyword = ModifierToken<SyntaxKind.AsyncKeyword>;
+    export type MacroKeyword = ModifierToken<SyntaxKind.MacroKeyword>;
     export type ConstKeyword = ModifierToken<SyntaxKind.ConstKeyword>;
     export type DeclareKeyword = ModifierToken<SyntaxKind.DeclareKeyword>;
     export type DefaultKeyword = ModifierToken<SyntaxKind.DefaultKeyword>;
@@ -1369,6 +1374,7 @@ namespace ts {
         | AbstractKeyword
         | AccessorKeyword
         | AsyncKeyword
+        | MacroKeyword
         | ConstKeyword
         | DeclareKeyword
         | DefaultKeyword

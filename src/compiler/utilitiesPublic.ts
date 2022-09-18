@@ -1223,6 +1223,7 @@ namespace ts {
             case SyntaxKind.AbstractKeyword:
             case SyntaxKind.AccessorKeyword:
             case SyntaxKind.AsyncKeyword:
+            case SyntaxKind.MacroKeyword:
             case SyntaxKind.ConstKeyword:
             case SyntaxKind.DeclareKeyword:
             case SyntaxKind.DefaultKeyword:
