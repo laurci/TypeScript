@@ -32137,6 +32137,20 @@ namespace ts {
             }
         }
 
+        function checkMacroCallExpression(call: CallExpression, declaration: FunctionDeclaration | FunctionExpression) {
+            if(!(isNonNullExpression(call.expression) && isIdentifier(call.expression.expression))) {
+                error(call, Diagnostics.Macros_must_be_invoked_with_the_operator);
+                return;
+            }
+
+            const callSourceFile = getSourceFileOfNode(call);
+            const declarationSourceFile = getSourceFileOfNode(declaration);
+            if(callSourceFile.fileName === declarationSourceFile.fileName) {
+                error(call, Diagnostics.Macros_can_t_be_used_in_the_same_file_they_are_defined_in);
+                return;
+            }
+        }
+
         /**
          * Syntactically and semantically checks a call or new expression.
          * @param node The call/new expression to be checked.
@@ -32146,6 +32160,13 @@ namespace ts {
             checkGrammarTypeArguments(node, node.typeArguments);
 
             const signature = getResolvedSignature(node, /*candidatesOutArray*/ undefined, checkMode);
+
+            if(isCallExpression(node)) {
+                if(signature.declaration && (isFunctionDeclaration(signature.declaration) || isFunctionExpression(signature.declaration)) && hasSyntacticModifier(signature.declaration, ModifierFlags.Macro)) {
+                    checkMacroCallExpression(node, signature.declaration);
+                }
+            }
+
             if (signature === resolvingSignature) {
                 // CheckMode.SkipGenericFunctions is enabled and this is a call to a generic function that
                 // returns a function type. We defer checking and return silentNeverType.
@@ -33298,6 +33319,10 @@ namespace ts {
                 checkCollisionsForDeclarationName(node, node.name);
             }
 
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroFunction(node);
+            }
+
             // The identityMapper object is used to indicate that function expressions are wildcards
             if (checkMode && checkMode & CheckMode.SkipContextSensitive && isContextSensitive(node)) {
                 // Skip parameters, return signature with return type that retains noncontextual parts so inferences can still be drawn in an early stage
@@ -33381,6 +33406,10 @@ namespace ts {
             const functionFlags = getFunctionFlags(node);
             const returnType = getReturnTypeFromAnnotation(node);
             checkAllCodePathsInNonVoidFunctionReturnOrThrow(node, returnType);
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroFunction(node);
+            }
 
             if (node.body) {
                 if (!getEffectiveReturnTypeNode(node)) {
@@ -37548,6 +37577,24 @@ namespace ts {
             }
         }
 
+        function checkMacroFunction(node: Node): void {
+            if(isFunctionDeclaration(node) || isFunctionExpression(node)) {
+                if(!node.name) {
+                    error(node, Diagnostics.Macro_functions_must_be_named);
+                    return;
+                }
+
+                if(hasSyntacticModifier(node, ModifierFlags.Async)) {
+                    error(node, Diagnostics.Macro_functions_must_not_be_async);
+                    return;
+                }
+            }
+            else {
+                error(node, Diagnostics.Macro_keyword_is_only_allowed_on_function_expressions_or_function_declarations);
+                return;
+            }
+        }
+
         function checkFunctionOrMethodDeclaration(node: FunctionDeclaration | MethodDeclaration | MethodSignature): void {
             checkDecorators(node);
             checkSignatureDeclaration(node);
@@ -37560,6 +37607,10 @@ namespace ts {
                 // This check will account for methods in class/interface declarations,
                 // as well as accessors in classes/object literals
                 checkComputedPropertyName(node.name);
+            }
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroFunction(node);
             }
 
             if (hasBindableName(node)) {

@@ -2360,7 +2360,7 @@ namespace ts {
             return token() === SyntaxKind.ClassKeyword || token() === SyntaxKind.FunctionKeyword ||
                 token() === SyntaxKind.InterfaceKeyword ||
                 (token() === SyntaxKind.AbstractKeyword && lookAhead(nextTokenIsClassKeywordOnSameLine)) ||
-                (token() === SyntaxKind.MacroKeyword && lookAhead(nextTokenIsClassKeywordOnSameLine)) ||
+                (token() === SyntaxKind.MacroKeyword && lookAhead(nextTokenIsFunctionKeywordOnSameLine)) ||
                 (token() === SyntaxKind.AsyncKeyword && lookAhead(nextTokenIsFunctionKeywordOnSameLine));
         }
 

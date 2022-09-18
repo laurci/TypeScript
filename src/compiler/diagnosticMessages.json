@@ -1554,6 +1554,26 @@
         "category": "Error",
         "code": 1800
     },
+    "Macro functions must be named": {
+        "category": "Error",
+        "code": 1801
+    },
+    "Macro keyword is only allowed on function expressions or function declarations": {
+        "category": "Error",
+        "code": 1802
+    },
+    "Macro functions must not be async": {
+        "category": "Error",
+        "code": 1803
+    },
+    "Macros can't be used in the same file they are defined in": {
+        "category": "Error",
+        "code": 1804
+    },
+    "Macros must be invoked with the '!' operator": {
+        "category": "Error",
+        "code": 1805
+    },
 
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",
