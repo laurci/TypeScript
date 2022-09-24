@@ -7770,6 +7770,10 @@ namespace ts {
             }
             const moduleSpecifier = parseModuleSpecifier();
 
+            if(isCompilerModuleSpecifier(moduleSpecifier)) {
+                addMetaprogramSourceFile(fileName);
+            }
+
             let assertClause: AssertClause | undefined;
             if (token() === SyntaxKind.AssertKeyword && !scanner.hasPrecedingLineBreak()) {
                 assertClause = parseAssertClause();

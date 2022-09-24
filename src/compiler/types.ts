@@ -6694,6 +6694,8 @@ namespace ts {
         /* @internal */ showConfig?: boolean;
         useDefineForClassFields?: boolean;
 
+        /* @internal */ metaprogram?: boolean;
+
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
     }
 

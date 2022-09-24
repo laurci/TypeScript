@@ -36,6 +36,47 @@ namespace ts {
         return v;
     };
 
+    export function transformMetaprogramReferences(context: TransformationContext) {
+        const Path = require("path") as typeof import("path");
+
+        const options = context.getCompilerOptions();
+        const metaprogramSourceFiles = getMetaprogramSourceFiles();
+
+        return (sourceFile: SourceFile) => {
+            const visitor = (node: Node): VisitResult<Node> => {
+                if(!options.metaprogram) {
+                    // remove imports to files that import "compiler" (ignore type imports)
+                    if(isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
+                        if(isStringLiteral(node.moduleSpecifier)) {
+                            if(pathIsRelative(node.moduleSpecifier.text)) {
+                                const importPath = Path.join(Path.dirname(sourceFile.fileName), node.moduleSpecifier.text);
+
+                                if(metaprogramSourceFiles.includes(importPath + ".ts") || metaprogramSourceFiles.includes(importPath + ".tsx")) {
+                                    return undefined;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if(isMacroCallExpressionNode(node)) {
+                    const binding = getMacroBinding(node);
+                    if(binding) {
+                        return executeCallExpressionMacro(context, node, binding);
+                    }
+                }
+
+                if(node) {
+                    return visitEachChild(node, visitor, context);
+                }
+
+                return node;
+            };
+
+            return visitEachChild(sourceFile, visitor, context);
+        };
+    }
+
     export function transformCustomSyntax(context: TransformationContext) {
         return (sourceFile: SourceFile) => {
             const visitor = (node: Node): VisitResult<Node> => {
@@ -43,7 +84,7 @@ namespace ts {
                     const deferStatements = node.statements.filter(statement => isDeferStatement(statement)) as DeferStatement[];
 
                     if(deferStatements.length > 0) {
-                        const isAsync = isAsyncFunction(node.parent);
+                        const isAsync = node.parent ? isAsyncFunction(node.parent) : false;
 
                         const deferredContent = deferStatements.map(x => x.body);
                         const deferFunction = context.factory.createFunctionDeclaration(
