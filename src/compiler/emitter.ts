@@ -1688,6 +1688,9 @@ namespace ts {
                     case SyntaxKind.EndOfDeclarationMarker:
                     case SyntaxKind.MergeDeclarationMarker:
                         return;
+
+                    case SyntaxKind.MacroKeyword:
+                        return;
                 }
                 if (isExpression(node)) {
                     hint = EmitHint.Expression;

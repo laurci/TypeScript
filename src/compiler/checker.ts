@@ -30653,7 +30653,7 @@ namespace ts {
                 return undefined;
             }
             const thisType = getThisTypeOfSignature(signature);
-            if (thisType && thisType !== voidType && node.kind !== SyntaxKind.NewExpression) {
+            if (thisType && thisType !== voidType && node.kind !== SyntaxKind.NewExpression && !isMacroCallExpressionNode(node)) {
                 // If the called expression is not of the form `x.f` or `x["f"]`, then sourceType = voidType
                 // If the signature's 'this' type is voidType, then the check is skipped -- anything is compatible.
                 // If the expression is a new expression, then the check is skipped.
@@ -32137,6 +32137,22 @@ namespace ts {
             }
         }
 
+        function checkMacroCallExpression(call: CallExpression, declaration: MacroDeclarationNode) {
+            if(!isMacroCallExpressionNode(call)) {
+                error(call, Diagnostics.Macros_must_be_invoked_with_the_operator);
+                return;
+            }
+
+            const callSourceFile = getSourceFileOfNode(call);
+            const declarationSourceFile = getSourceFileOfNode(declaration);
+            if(callSourceFile.fileName === declarationSourceFile.fileName) {
+                error(call, Diagnostics.Macros_can_t_be_used_in_the_same_file_they_are_defined_in);
+                return;
+            }
+
+            bindMacro(call, declaration);
+        }
+
         /**
          * Syntactically and semantically checks a call or new expression.
          * @param node The call/new expression to be checked.
@@ -32146,6 +32162,13 @@ namespace ts {
             checkGrammarTypeArguments(node, node.typeArguments);
 
             const signature = getResolvedSignature(node, /*candidatesOutArray*/ undefined, checkMode);
+
+            if(isCallExpression(node)) {
+                if(signature.declaration && isMacroDeclarationNode(signature.declaration)) {
+                    checkMacroCallExpression(node, signature.declaration);
+                }
+            }
+
             if (signature === resolvingSignature) {
                 // CheckMode.SkipGenericFunctions is enabled and this is a call to a generic function that
                 // returns a function type. We defer checking and return silentNeverType.
@@ -33264,12 +33287,12 @@ namespace ts {
                 if (type && type.flags & TypeFlags.Never) {
                     error(errorNode, Diagnostics.A_function_returning_never_cannot_have_a_reachable_end_point);
                 }
-                else if (type && !hasExplicitReturn) {
+                else if (type && !hasExplicitReturn && !hasSyntacticModifier(func, ModifierFlags.Macro)) {
                     // minimal check: function has syntactic return type annotation and no explicit return statements in the body
                     // this function does not conform to the specification.
                     error(errorNode, Diagnostics.A_function_whose_declared_type_is_neither_void_nor_any_must_return_a_value);
                 }
-                else if (type && strictNullChecks && !isTypeAssignableTo(undefinedType, type)) {
+                else if (type && strictNullChecks && !isTypeAssignableTo(undefinedType, type) && !hasSyntacticModifier(func, ModifierFlags.Macro)) {
                     error(errorNode, Diagnostics.Function_lacks_ending_return_statement_and_return_type_does_not_include_undefined);
                 }
                 else if (compilerOptions.noImplicitReturns) {
@@ -33296,6 +33319,10 @@ namespace ts {
 
             if (isFunctionExpression(node)) {
                 checkCollisionsForDeclarationName(node, node.name);
+            }
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroFunction(node);
             }
 
             // The identityMapper object is used to indicate that function expressions are wildcards
@@ -33381,6 +33408,10 @@ namespace ts {
             const functionFlags = getFunctionFlags(node);
             const returnType = getReturnTypeFromAnnotation(node);
             checkAllCodePathsInNonVoidFunctionReturnOrThrow(node, returnType);
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroFunction(node);
+            }
 
             if (node.body) {
                 if (!getEffectiveReturnTypeNode(node)) {
@@ -37389,7 +37420,7 @@ namespace ts {
             checkExternalEmitHelpers(firstDecorator, ExternalEmitHelpers.Decorate);
             if (node.kind === SyntaxKind.Parameter) {
                 checkExternalEmitHelpers(firstDecorator, ExternalEmitHelpers.Param);
-            }
+   }
 
             if (compilerOptions.emitDecoratorMetadata) {
                 checkExternalEmitHelpers(firstDecorator, ExternalEmitHelpers.Metadata);
@@ -37548,6 +37579,24 @@ namespace ts {
             }
         }
 
+        function checkMacroFunction(node: Node): void {
+            if(isFunctionDeclaration(node) || isFunctionExpression(node)) {
+                if(!node.name) {
+                    error(node, Diagnostics.Macro_functions_must_be_named);
+                    return;
+                }
+
+                if(hasSyntacticModifier(node, ModifierFlags.Async)) {
+                    error(node, Diagnostics.Macro_functions_must_not_be_async);
+                    return;
+                }
+            }
+            else {
+                error(node, Diagnostics.Macro_keyword_is_only_allowed_on_function_expressions_or_function_declarations);
+                return;
+            }
+        }
+
         function checkFunctionOrMethodDeclaration(node: FunctionDeclaration | MethodDeclaration | MethodSignature): void {
             checkDecorators(node);
             checkSignatureDeclaration(node);
@@ -37560,6 +37609,10 @@ namespace ts {
                 // This check will account for methods in class/interface declarations,
                 // as well as accessors in classes/object literals
                 checkComputedPropertyName(node.name);
+            }
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroFunction(node);
             }
 
             if (hasBindableName(node)) {
@@ -39616,6 +39669,12 @@ namespace ts {
             }
 
             const container = getContainingFunctionOrClassStaticBlock(node);
+
+            if(container && isMacroDeclarationNode(container)) {
+                // return statements are not checked in macros
+                return;
+            }
+
             if(container && isClassStaticBlockDeclaration(container)) {
                 grammarErrorOnFirstToken(node, Diagnostics.A_return_statement_cannot_be_used_inside_a_class_static_block);
                 return;

@@ -38,6 +38,9 @@
         "./ThirdPartyNoticeText.txt",
         "!**/.gitattributes"
     ],
+    "dependencies": {
+        "pirates": "^4.0.5"
+    },
     "devDependencies": {
         "@octokit/rest": "latest",
         "@types/async": "latest",
