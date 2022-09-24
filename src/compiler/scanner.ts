@@ -80,6 +80,7 @@ namespace ts {
     /** @internal */
     export const textToKeywordObj: MapLike<KeywordSyntaxKind> = {
         abstract: SyntaxKind.AbstractKeyword,
+        accessor: SyntaxKind.AccessorKeyword,
         any: SyntaxKind.AnyKeyword,
         as: SyntaxKind.AsKeyword,
         asserts: SyntaxKind.AssertsKeyword,
@@ -158,6 +159,7 @@ namespace ts {
         with: SyntaxKind.WithKeyword,
         use: SyntaxKind.UseKeyword,
         defer: SyntaxKind.DeferKeyword,
+        macro: SyntaxKind.MacroKeyword,
         yield: SyntaxKind.YieldKeyword,
         async: SyntaxKind.AsyncKeyword,
         await: SyntaxKind.AwaitKeyword,

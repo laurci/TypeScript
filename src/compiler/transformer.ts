@@ -47,6 +47,7 @@ namespace ts {
 
         addRange(transformers, customTransformers && map(customTransformers.before, wrapScriptTransformerFactory));
 
+        transformers.push(transformMetaprogramReferences);
         transformers.push(transformCustomSyntax);
 
         transformers.push(transformTypeScript);

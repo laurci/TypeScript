@@ -899,6 +899,14 @@
         "category": "Error",
         "code": 1274
     },
+    "'accessor' modifier can only appear on a property declaration.": {
+        "category": "Error",
+        "code": 1275
+    },
+    "An 'accessor' property cannot be declared optional.": {
+        "category": "Error",
+        "code": 1276
+    },
 
     "'with' statements are not allowed in an async function block.": {
         "category": "Error",
@@ -1546,12 +1554,31 @@
         "category": "Error",
         "code": 1800
     },
-    "Expected list of comma separated identifiers": {
+    "Macro functions must be named": {
         "category": "Error",
         "code": 1801
     },
-
-
+    "Macro keyword is only allowed on function expressions or function declarations": {
+        "category": "Error",
+        "code": 1802
+    },
+    "Macro functions must not be async": {
+        "category": "Error",
+        "code": 1803
+    },
+    "Macros can't be used in the same file they are defined in": {
+        "category": "Error",
+        "code": 1804
+    },
+    "Macros must be invoked with the '!' operator": {
+        "category": "Error",
+        "code": 1805
+    },
+    
+    "Expected list of comma separated identifiers": {
+        "category": "Error",
+        "code": 1806
+    },
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",
         "code": 2200
@@ -7495,5 +7522,29 @@
     "'{0}' is automatically exported here.": {
         "category": "Message",
         "code": 18044
+    },
+    "Properties with the 'accessor' modifier are only available when targeting ECMAScript 2015 and higher.": {
+        "category": "Error",
+        "code": 18045
+    },
+    "'{0}' is of type 'unknown'.": {
+        "category": "Error",
+        "code": 18046
+    },
+    "'{0}' is possibly 'null'.": {
+        "category": "Error",
+        "code": 18047
+    },
+    "'{0}' is possibly 'undefined'.": {
+        "category": "Error",
+        "code": 18048
+    },
+    "'{0}' is possibly 'null' or 'undefined'.": {
+        "category": "Error",
+        "code": 18049
+    },
+    "The value '{0}' cannot be used here.": {
+        "category": "Error",
+        "code": 18050
     }
 }

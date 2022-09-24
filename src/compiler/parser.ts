@@ -741,6 +741,7 @@ namespace ts {
         [SyntaxKind.JSDocProtectedTag]: forEachChildInJSDocTag,
         [SyntaxKind.JSDocReadonlyTag]: forEachChildInJSDocTag,
         [SyntaxKind.JSDocDeprecatedTag]: forEachChildInJSDocTag,
+        [SyntaxKind.JSDocOverrideTag]: forEachChildInJSDocTag,
         [SyntaxKind.PartiallyEmittedExpression]: forEachChildInPartiallyEmittedExpression,
     };
 
@@ -822,10 +823,10 @@ namespace ts {
     }
 
     function forEachChildInJSDocLinkCodeOrPlain<T>(node: JSDocLink | JSDocLinkCode | JSDocLinkPlain, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
-            return visitNode(cbNode, node.name);
+        return visitNode(cbNode, node.name);
     }
 
-    function forEachChildInJSDocTag<T>(node: JSDocUnknownTag | JSDocClassTag | JSDocPublicTag | JSDocPrivateTag | JSDocProtectedTag | JSDocReadonlyTag | JSDocDeprecatedTag, cbNode: (node: Node) => T | undefined, cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
+    function forEachChildInJSDocTag<T>(node: JSDocUnknownTag | JSDocClassTag | JSDocPublicTag | JSDocPrivateTag | JSDocProtectedTag | JSDocReadonlyTag | JSDocDeprecatedTag | JSDocOverrideTag, cbNode: (node: Node) => T | undefined, cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
         return visitNode(cbNode, node.tagName)
             || (typeof node.comment === "string" ? undefined : visitNodes(cbNode, cbNodes, node.comment));
     }
@@ -2320,6 +2321,7 @@ namespace ts {
                     return canFollowExportModifier();
                 case SyntaxKind.DefaultKeyword:
                     return nextTokenCanFollowDefaultKeyword();
+                case SyntaxKind.AccessorKeyword:
                 case SyntaxKind.StaticKeyword:
                 case SyntaxKind.GetKeyword:
                 case SyntaxKind.SetKeyword:
@@ -2359,6 +2361,7 @@ namespace ts {
             return token() === SyntaxKind.ClassKeyword || token() === SyntaxKind.FunctionKeyword ||
                 token() === SyntaxKind.InterfaceKeyword ||
                 (token() === SyntaxKind.AbstractKeyword && lookAhead(nextTokenIsClassKeywordOnSameLine)) ||
+                (token() === SyntaxKind.MacroKeyword && lookAhead(nextTokenIsFunctionKeywordOnSameLine)) ||
                 (token() === SyntaxKind.AsyncKeyword && lookAhead(nextTokenIsFunctionKeywordOnSameLine));
         }
 
@@ -6049,6 +6052,7 @@ namespace ts {
                 case SyntaxKind.OpenBraceToken:
                     return parseObjectLiteralExpression();
                 case SyntaxKind.AsyncKeyword:
+                case SyntaxKind.MacroKeyword:
                     // Async arrow functions are parsed earlier in parseAssignmentExpressionOrHigher.
                     // If we encounter `async [no LineTerminator here] function` then this is an async
                     // function; otherwise, its an identifier.
@@ -6195,6 +6199,7 @@ namespace ts {
             const pos = getNodePos();
             const hasJSDoc = hasPrecedingJSDocComment();
             const modifiers = parseModifiers();
+
             parseExpected(SyntaxKind.FunctionKeyword);
             const asteriskToken = parseOptionalToken(SyntaxKind.AsteriskToken);
             const isGenerator = asteriskToken ? SignatureFlags.Yield : SignatureFlags.None;
@@ -6679,7 +6684,9 @@ namespace ts {
                     case SyntaxKind.NamespaceKeyword:
                         return nextTokenIsIdentifierOrStringLiteralOnSameLine();
                     case SyntaxKind.AbstractKeyword:
+                    case SyntaxKind.AccessorKeyword:
                     case SyntaxKind.AsyncKeyword:
+                    case SyntaxKind.MacroKeyword:
                     case SyntaxKind.DeclareKeyword:
                     case SyntaxKind.PrivateKeyword:
                     case SyntaxKind.ProtectedKeyword:
@@ -6764,6 +6771,7 @@ namespace ts {
                     return isStartOfDeclaration();
 
                 case SyntaxKind.AsyncKeyword:
+                case SyntaxKind.MacroKeyword:
                 case SyntaxKind.DeclareKeyword:
                 case SyntaxKind.InterfaceKeyword:
                 case SyntaxKind.ModuleKeyword:
@@ -6773,6 +6781,7 @@ namespace ts {
                     // When these don't start a declaration, they're an identifier in an expression statement
                     return true;
 
+                case SyntaxKind.AccessorKeyword:
                 case SyntaxKind.PublicKeyword:
                 case SyntaxKind.PrivateKeyword:
                 case SyntaxKind.ProtectedKeyword:
@@ -6850,6 +6859,7 @@ namespace ts {
                 case SyntaxKind.AtToken:
                     return parseDeclaration();
                 case SyntaxKind.AsyncKeyword:
+                case SyntaxKind.MacroKeyword:
                 case SyntaxKind.InterfaceKeyword:
                 case SyntaxKind.TypeKeyword:
                 case SyntaxKind.ModuleKeyword:
@@ -6863,6 +6873,7 @@ namespace ts {
                 case SyntaxKind.ProtectedKeyword:
                 case SyntaxKind.PublicKeyword:
                 case SyntaxKind.AbstractKeyword:
+                case SyntaxKind.AccessorKeyword:
                 case SyntaxKind.StaticKeyword:
                 case SyntaxKind.ReadonlyKeyword:
                 case SyntaxKind.GlobalKeyword:
@@ -7428,6 +7439,7 @@ namespace ts {
                 if (modifier.kind === SyntaxKind.StaticKeyword) hasSeenStatic = true;
                 list = append(list, modifier);
             }
+
             return list && createNodeArray(list, pos);
         }
 
@@ -7781,6 +7793,10 @@ namespace ts {
                 parseExpected(SyntaxKind.FromKeyword);
             }
             const moduleSpecifier = parseModuleSpecifier();
+
+            if(isCompilerModuleSpecifier(moduleSpecifier)) {
+                addMetaprogramSourceFile(fileName);
+            }
 
             let assertClause: AssertClause | undefined;
             if (token() === SyntaxKind.AssertKeyword && !scanner.hasPrecedingLineBreak()) {

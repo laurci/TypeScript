@@ -8,6 +8,7 @@ const del = require("del");
 const rename = require("gulp-rename");
 const concat = require("gulp-concat");
 const merge2 = require("merge2");
+const through = require("through2");
 const { src, dest, task, parallel, series, watch } = require("gulp");
 const { append, transform } = require("gulp-insert");
 const { prependFile } = require("./scripts/build/prepend");
@@ -43,8 +44,34 @@ const generateLibs = () => {
             .pipe(concat(relativeTarget, { newLine: "\n\n" }))
             .pipe(dest("built/local"))));
 };
+
 task("lib", generateLibs);
 task("lib").description = "Builds the library targets";
+
+const generateCompilerLib = () => {
+    return src("built/local/typescript.d.ts")
+            .pipe(through.obj((file, enc, cb) => {
+                const transformedFile = file.clone();
+
+                const text = transformedFile.contents.toString();
+                transformedFile.contents = Buffer.from(
+                    text
+                        .replace(/declare/g, "")
+                        .replace("namespace ts", "declare module \"compiler\" {\nnamespace ts")
+                        .replace("export = ts;", "export = ts;\n}")
+                );
+
+                // eslint-disable-next-line
+                cb(null, transformedFile);
+            }))
+            .pipe(rename("lib.compiler.d.ts"))
+            .pipe(dest("built/local/"));
+};
+
+const watchGenerateCompilerLib = () => watch("built/local/typescript.d.ts", generateCompilerLib);
+
+task("generate-compiler-lib", generateCompilerLib);
+task("watch-generate-compiler-lib", watchGenerateCompilerLib);
 
 const cleanLib = () => del(libs.map(lib => lib.target));
 cleanTasks.push(cleanLib);
@@ -236,7 +263,7 @@ task("watch-tsserver").flags = {
     "   --built": "Compile using the built version of the compiler."
 };
 
-task("min", series(preBuild, parallel(buildTsc, buildServer)));
+task("min", series(preBuild, series(parallel(buildTsc, buildServer), generateCompilerLib)));
 task("min").description = "Builds only tsc and tsserver";
 task("min").flags = {
     "   --built": "Compile using the built version of the compiler."
@@ -245,7 +272,7 @@ task("min").flags = {
 task("clean-min", series(cleanTsc, cleanServer));
 task("clean-min").description = "Cleans outputs for tsc and tsserver";
 
-task("watch-min", series(preBuild, parallel(watchLib, watchDiagnostics, watchTsc, watchServer)));
+task("watch-min", series(preBuild, parallel(watchLib, watchGenerateCompilerLib, watchDiagnostics, watchTsc, watchServer)));
 task("watch-min").description = "Watches for changes to a tsc and tsserver only";
 task("watch-min").flags = {
     "   --built": "Compile using the built version of the compiler."
@@ -409,13 +436,13 @@ const buildOtherOutputs = parallel(buildCancellationToken, buildTypingsInstaller
 task("other-outputs", series(preBuild, buildOtherOutputs));
 task("other-outputs").description = "Builds miscelaneous scripts and documents distributed with the LKG";
 
-task("local", series(preBuild, parallel(localize, buildTsc, buildServer, buildServices, buildLssl, buildOtherOutputs)));
+task("local", series(preBuild, series(parallel(localize, buildTsc, buildServer, buildServices, buildLssl, buildOtherOutputs), generateCompilerLib)));
 task("local").description = "Builds the full compiler and services";
 task("local").flags = {
     "   --built": "Compile using the built version of the compiler."
 };
 
-task("watch-local", series(preBuild, parallel(watchLib, watchDiagnostics, watchTsc, watchServices, watchServer, watchLssl)));
+task("watch-local", series(preBuild, parallel(watchLib, watchGenerateCompilerLib, watchDiagnostics, watchTsc, watchServices, watchServer, watchLssl)));
 task("watch-local").description = "Watches for changes to projects in src/ (but does not execute tests).";
 task("watch-local").flags = {
     "   --built": "Compile using the built version of the compiler."
@@ -424,10 +451,8 @@ task("watch-local").flags = {
 const preTest = parallel(buildTsc, buildTests, buildServices, buildLssl);
 preTest.displayName = "preTest";
 
-const postTest = (done) => cmdLineOptions.lint ? lint() : done();
-
 const runTests = () => runConsoleTests("built/local/run.js", "mocha-fivemat-progress-reporter", /*runInParallel*/ false, /*watchMode*/ false);
-task("runtests", series(preBuild, preTest, runTests, postTest));
+task("runtests", series(preBuild, preTest, runTests));
 task("runtests").description = "Runs the tests using the built run.js file.";
 task("runtests").flags = {
     "-t --tests=<regex>": "Pattern for tests to run.",
@@ -439,7 +464,6 @@ task("runtests").flags = {
     "   --dirty": "Run tests without first cleaning test output directories",
     "   --stackTraceLimit=<limit>": "Sets the maximum number of stack frames to display. Use 'full' to show all frames.",
     "   --no-color": "Disables color",
-    "   --no-lint": "Disables lint",
     "   --timeout=<ms>": "Overrides the default test timeout.",
     "   --built": "Compile using the built version of the compiler.",
     "   --shards": "Total number of shards running tests (default: 1)",
@@ -447,10 +471,9 @@ task("runtests").flags = {
 };
 
 const runTestsParallel = () => runConsoleTests("built/local/run.js", "min", /*runInParallel*/ cmdLineOptions.workers > 1, /*watchMode*/ false);
-task("runtests-parallel", series(preBuild, preTest, runTestsParallel, postTest));
+task("runtests-parallel", series(preBuild, preTest, runTestsParallel));
 task("runtests-parallel").description = "Runs all the tests in parallel using the built run.js file.";
 task("runtests-parallel").flags = {
-    "   --no-lint": "disables lint.",
     "   --light": "Run tests in light mode (fewer verifications, but tests run faster).",
     "   --keepFailed": "Keep tests in .failed-tests even if they pass.",
     "   --dirty": "Run tests without first cleaning test output directories.",
@@ -613,7 +636,6 @@ task("watch").flags = {
     "   --dirty": "Run tests without first cleaning test output directories",
     "   --stackTraceLimit=<limit>": "Sets the maximum number of stack frames to display. Use 'full' to show all frames.",
     "   --no-color": "Disables color",
-    "   --no-lint": "Disables lint",
     "   --timeout=<ms>": "Overrides the default test timeout.",
     "   --workers=<number>": "The number of parallel workers to use.",
     "   --built": "Compile using the built version of the compiler.",
