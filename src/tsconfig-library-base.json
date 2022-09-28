@@ -5,6 +5,6 @@
         "composite": false,
         "incremental":  true,
         "declaration": true,
-        "stripInternal":  true
+        "stripInternal":  false
     }
 }

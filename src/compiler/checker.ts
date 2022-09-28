@@ -1,4 +1,3 @@
-/* @internal */
 namespace ts {
     const ambientModuleSymbolRegex = /^".+"$/;
     const anon = "(anonymous)" as __String & string;
