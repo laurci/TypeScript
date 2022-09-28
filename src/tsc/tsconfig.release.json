@@ -2,7 +2,7 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "outFile": "../../built/local/tsc.release.js",
-        "stripInternal": false,
+        "stripInternal": true,
         "preserveConstEnums": false,
         "declaration": false,
         "declarationMap": false,

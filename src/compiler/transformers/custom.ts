@@ -60,9 +60,9 @@ namespace ts {
                 }
 
                 if(isMacroCallExpressionNode(node)) {
-                    const binding = getMacroBinding(node);
+                    const binding = getMacroBinding("function", node);
                     if(binding) {
-                        return executeCallExpressionMacro(context, node, binding);
+                        return executeCallExpressionMacro(context, node);
                     }
                 }
 

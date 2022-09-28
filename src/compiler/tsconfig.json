@@ -41,6 +41,8 @@
         "loader.ts",
         "macros.ts",
 
+        "macrosApi/transform.ts",
+
         "binder.ts",
         "symbolWalker.ts",
         "checker.ts",

@@ -1,3 +1,4 @@
+/* @internal */
 namespace ts {
     const ambientModuleSymbolRegex = /^".+"$/;
     const anon = "(anonymous)" as __String & string;
@@ -32149,7 +32150,7 @@ namespace ts {
                 return;
             }
 
-            bindMacro(call, declaration);
+            bindMacro("function", declaration, call);
         }
 
         /**
