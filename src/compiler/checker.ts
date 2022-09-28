@@ -9558,6 +9558,68 @@ namespace ts {
             return includePatternInType ? nonInferrableAnyType : anyType;
         }
 
+        type TypeBuilderPrimitives = "string" | "number" | "boolean";
+
+        interface TypeBuilderElement {
+            name: string;
+            elements?: TypeBuilderElement[];
+            primitive?: TypeBuilderPrimitives;
+            optional?: boolean;
+            nullable?: boolean;
+            array?: boolean;
+        }
+
+        function getPrimitiveFromTypeBuilder(primitive: TypeBuilderPrimitives) {
+            return primitive === "string" ? stringType : primitive === "number" ? numberType : booleanType;
+        }
+
+        function enhanceTypeForElement(element: TypeBuilderElement, rawType: Type): Type {
+            let type = rawType;
+
+            if(element.optional) {
+                type = getUnionType([type, undefinedType]);
+            }
+
+            if(element.nullable) {
+                type = getUnionType([type, nullType]);
+            }
+
+            if(element.array) {
+                type = createArrayType(type);
+            }
+
+            return type;
+        }
+
+        function getTypeForElement(element: TypeBuilderElement): Type {
+            if(element.primitive) {
+                return enhanceTypeForElement(element, getPrimitiveFromTypeBuilder(element.primitive));
+            }
+            else if(element.elements) {
+                const members = createSymbolTable();
+
+                forEach(element.elements, e => {
+                    const flags = SymbolFlags.Property | (e.optional ? SymbolFlags.Optional : 0);
+                    const symbol = createSymbol(flags, escapeLeadingUnderscores(e.name));
+
+                    symbol.type = getTypeForElement(e);
+
+                    members.set(symbol.escapedName, symbol);
+                });
+
+                const type = createAnonymousType(undefined, members, emptyArray, emptyArray, emptyArray);
+                type.objectFlags |= (ObjectFlags.ObjectLiteral | ObjectFlags.ContainsObjectOrArrayLiteral);
+
+                return enhanceTypeForElement(element, type);
+            }
+
+            throw new Error("Invalid input for type builder!");
+        }
+
+        function getObjectTypeFromBuilder(element: TypeBuilderElement): Type {
+            return getTypeForElement(element);
+        }
+
         // Return the type implied by an object binding pattern
         function getTypeFromObjectBindingPattern(pattern: ObjectBindingPattern, includePatternInType: boolean, reportErrors: boolean): Type {
             const members = createSymbolTable();
@@ -32403,6 +32465,43 @@ namespace ts {
             if (languageVersion < ScriptTarget.ES2015) {
                 checkExternalEmitHelpers(node, ExternalEmitHelpers.MakeTemplateObject);
             }
+
+            if(isIdentifier(node.tag) && node.tag.escapedText === "gql") {
+                console.log("checking gql");
+
+                const tp = getObjectTypeFromBuilder({
+                    name: "_gql1",
+                    array: true,
+                    optional: true,
+                    nullable: true,
+                    elements: [
+                        {
+                            name: "hello",
+                            primitive: "string",
+                            optional: false
+                        },
+                        {
+                            name: "hello2",
+                            elements: [
+                                {
+                                    name: "a",
+                                    primitive: "number",
+                                    optional: true
+                                },
+                                {
+                                    name: "b",
+                                    primitive: "number",
+                                    array: true
+                                },
+                            ]
+                        }
+                    ]
+                });
+
+                // eslint-disable-next-line local/boolean-trivia
+                return createTypeReference(getGlobalType(escapeLeadingUnderscores("GQL"), 1, false) as GenericType, [tp]);
+            }
+
             const signature = getResolvedSignature(node);
             checkDeprecatedSignature(signature, node);
             return getReturnTypeOfSignature(signature);
