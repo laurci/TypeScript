@@ -22,7 +22,7 @@ namespace ts {
         const declarations = getMacroDeclarations();
         const sourceFileNameSet = new Set<string>();
         for (const declaration of declarations) {
-            const sourceFile = getSourceFileOfNode(declaration);
+            const sourceFile = getSourceFileOfNode(declaration.node);
             sourceFileNameSet.add(sourceFile.fileName);
         }
         const sourceFileNames: string[] = [];
@@ -33,6 +33,7 @@ namespace ts {
             target: ScriptTarget.ES5,
             module: ModuleKind.CommonJS,
             skipLibCheck: true,
+            skipDefaultLibCheck: true,
             declaration: false,
             strict: true
         };
@@ -94,7 +95,7 @@ namespace ts {
     }
 
     const moduleCache = new Map<string, any>();
-    const macroCache = new Map<MacroDeclarationNode, MacroFunction>();
+    const macroCache = new Map<MacroDeclarationNode, MacroExecutor>();
 
     function compileModule(_text: string, path: string) {
         const text = emitSourceFile(path);
@@ -110,8 +111,8 @@ namespace ts {
         return mod;
     }
 
-    export function loadMacro<T extends BaseMacroContext = BaseMacroContext>(declaration: MacroDeclarationNode): MacroFunction<T> {
-        if(macroCache.has(declaration)) return macroCache.get(declaration) as MacroFunction<T>;
+    export function loadMacro<T extends BaseMacro = BaseMacro>(declaration: MacroDeclarationNode): MacroExecutor<T> {
+        if(macroCache.has(declaration)) return macroCache.get(declaration) as MacroExecutor<T>;
 
         const sourceFile = getSourceFileOfNode(declaration);
         const path = sourceFile.fileName;

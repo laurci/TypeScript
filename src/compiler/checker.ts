@@ -32150,7 +32150,7 @@ namespace ts {
                 return;
             }
 
-            bindMacro(call, declaration);
+            bindMacro("function", declaration, call);
         }
 
         /**
