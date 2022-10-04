@@ -1574,6 +1574,26 @@
         "category": "Error",
         "code": 1805
     },
+    "Macro declaration is missing context parameter type.": {
+        "category": "Error",
+        "code": 1806
+    },
+    "Macro declaration has '{0}' context and can't be invoked as a '{1}' macro.": {
+        "category": "Error",
+        "code": 1807
+    },
+    "Check error: {0}": {
+        "category": "Error",
+        "code": 1808
+    },
+    "Check suggestion: {0}": {
+        "category": "Suggestion",
+        "code": 1809
+    },
+    "Check message: {0}": {
+        "category": "Message",
+        "code": 1810
+    },
 
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",

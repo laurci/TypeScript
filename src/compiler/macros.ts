@@ -9,6 +9,8 @@ namespace ts {
         expression: Omit<NonNullExpression, "expression"> & {expression: Identifier}
     };
 
+    export type MacroTaggedTemplateExpressionNode = Omit<TaggedTemplateExpression, "tag"> & { tag: Omit<NonNullExpression, "expression"> & {expression: Identifier} };
+
     export function isMacroDeclarationNode(node: Node): node is MacroDeclarationNode {
         return (isFunctionDeclaration(node) || isFunctionExpression(node)) && !!node.name && isIdentifier(node.name) && hasSyntacticModifier(node, ModifierFlags.Macro);
     }
@@ -17,8 +19,11 @@ namespace ts {
         return isCallExpression(node) && isNonNullExpression(node.expression) && isIdentifier(node.expression.expression);
     }
 
+    export function isMacroTaggedTemplateExpressionNode(node: Node): node is MacroTaggedTemplateExpressionNode {
+        return isTaggedTemplateExpression(node) && isNonNullExpression(node.tag) && isIdentifier(node.tag.expression);
+    }
 
-    type MacroDeclarationType = "function" | "taggedTemplate" | "derive";
+    export type MacroDeclarationType = "function" | "taggedTemplate" | "derive";
     interface MacroDeclaration<TType extends MacroDeclarationType = MacroDeclarationType, TNode extends Node = Node> {
         type: TType;
         node: TNode;
@@ -44,7 +49,7 @@ namespace ts {
 
     type MacroNodesMap = MacroNodesMapper<{
         function: MacroCallExpressionNode;
-        taggedTemplate: TaggedTemplateExpression;
+        taggedTemplate: MacroTaggedTemplateExpressionNode;
         derive: Node;
     }>;
 
@@ -55,11 +60,13 @@ namespace ts {
 
     export interface MacroHooks<TNode extends Node> {
         transform: TransformApiFunction<TNode>[];
+        check: CheckApiFunction<TNode>[];
     }
 
     function createEmptyHooks<TNode extends Node>(): MacroHooks<TNode> {
         return {
-            transform: []
+            transform: [],
+            check: []
         };
     }
 
@@ -70,7 +77,11 @@ namespace ts {
         declaration: T
     };
 
-    export interface FunctionMacro extends BaseMacro, MacroWithDeclaration<FunctionMacroDeclaration>, MacroWithTransformApi<MacroCallExpressionNode> {
+    export interface FunctionMacro extends BaseMacro, MacroWithDeclaration<FunctionMacroDeclaration>, MacroWithTransformApi<MacroCallExpressionNode>, MacroWithCheckApi<MacroCallExpressionNode> {
+
+    }
+
+    export interface TaggedTemplateMacro extends BaseMacro, MacroWithDeclaration<TaggedTemplateMacroDeclaration>, MacroWithTransformApi<MacroTaggedTemplateExpressionNode>, MacroWithCheckApi<MacroTaggedTemplateExpressionNode> {
 
     }
 
@@ -107,7 +118,7 @@ namespace ts {
         return sourceFiles;
     }
 
-    function getHooksForMacro<T extends MacroDeclarationType, TMacro extends BaseMacro>(declaration: MacroDeclarationsMap[T], contextProvider: (hooks: MacroHooks<MacroNodesMap[T]>) => TMacro): MacroHooks<MacroNodesMap[T]> {
+    export function getHooksForMacro<T extends MacroDeclarationType, TMacro extends BaseMacro>(declaration: MacroDeclarationsMap[T], contextProvider: (hooks: MacroHooks<MacroNodesMap[T]>) => TMacro): MacroHooks<MacroNodesMap[T]> {
         if(macroHooks.has(declaration)) return macroHooks.get(declaration) as MacroHooks<MacroNodesMap[T]>;
 
         const executor = loadMacro<TMacro>(declaration.node);
@@ -120,19 +131,4 @@ namespace ts {
         macroHooks.set(declaration, hooks);
         return hooks;
     }
-
-    export function executeCallExpressionMacro(context: TransformationContext, node: MacroCallExpressionNode): Node | undefined {
-        const declaration = getMacroBinding("function", node);
-        if(!declaration) return node;
-
-        const hooks = getHooksForMacro<"function", FunctionMacro>(declaration, (hooks) => ({
-            declaration,
-            ...createTransformMacroApi(hooks)
-        }));
-
-        if(!hooks) return node;
-
-        return executeTransformHook(hooks, context, node);
-    }
-
 }

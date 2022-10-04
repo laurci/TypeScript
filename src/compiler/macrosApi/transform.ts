@@ -48,7 +48,7 @@ namespace ts {
             hook(api);
 
             if(remove) {
-                return undefined;
+                return factory.createVoidZero();
             }
 
             if(replacement) {
@@ -58,4 +58,36 @@ namespace ts {
             return node;
         }, node);
     }
+
+
+    export function transformCallExpressionMacro(context: TransformationContext, node: MacroCallExpressionNode): Node | undefined {
+        const declaration = getMacroBinding("function", node);
+        if(!declaration) return node;
+
+        const hooks = getHooksForMacro<"function", FunctionMacro>(declaration, (hooks) => ({
+            declaration,
+            ...createTransformMacroApi(hooks),
+            ...createCheckApi(hooks)
+        }));
+
+        if(!hooks) return node;
+
+        return executeTransformHook(hooks, context, node);
+    }
+
+    export function transformTaggedTemplateExpressionMacro(context: TransformationContext, node: MacroTaggedTemplateExpressionNode): Node | undefined {
+        const declaration = getMacroBinding("taggedTemplate", node);
+        if(!declaration) return node;
+
+        const hooks = getHooksForMacro<"taggedTemplate", TaggedTemplateMacro>(declaration, (hooks) => ({
+            declaration,
+            ...createTransformMacroApi(hooks),
+            ...createCheckApi(hooks)
+        }));
+
+        if(!hooks) return node;
+
+        return executeTransformHook(hooks, context, node);
+    }
+
 }

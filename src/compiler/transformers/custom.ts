@@ -62,7 +62,14 @@ namespace ts {
                 if(isMacroCallExpressionNode(node)) {
                     const binding = getMacroBinding("function", node);
                     if(binding) {
-                        return executeCallExpressionMacro(context, node);
+                        return transformCallExpressionMacro(context, node);
+                    }
+                }
+
+                if(isMacroTaggedTemplateExpressionNode(node)) {
+                    const binding = getMacroBinding("taggedTemplate", node);
+                    if(binding) {
+                        return transformTaggedTemplateExpressionMacro(context, node);
                     }
                 }
 

@@ -8,25 +8,17 @@ namespace ts {
         Pirates.addHook((code, filename) => {
             return compileModule(code, filename);
         }, {
-            extensions: [".ts"],
+            extensions: [".ts", ".tsx"],
             ignoreNodeModules: true,
         });
     })();
 
     let metaProgram: Program | undefined;
+
     function getMetaProgram() {
         if(!!metaProgram) return metaProgram;
 
         console.time("create metaprogram");
-
-        const declarations = getMacroDeclarations();
-        const sourceFileNameSet = new Set<string>();
-        for (const declaration of declarations) {
-            const sourceFile = getSourceFileOfNode(declaration.node);
-            sourceFileNameSet.add(sourceFile.fileName);
-        }
-        const sourceFileNames: string[] = [];
-        sourceFileNameSet.forEach((fileName) => sourceFileNames.push(fileName));
 
         const compilerOptions: CompilerOptions = {
             metaprogram: true,
@@ -35,11 +27,12 @@ namespace ts {
             skipLibCheck: true,
             skipDefaultLibCheck: true,
             declaration: false,
+            jsx: JsxEmit.Preserve,
             strict: true
         };
 
         metaProgram = createProgram({
-            rootNames: sourceFileNames,
+            rootNames: getMetaprogramSourceFiles(),
             options: compilerOptions
         });
 

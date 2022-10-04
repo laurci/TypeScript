@@ -1366,6 +1366,13 @@ namespace ts {
         performance.measure("Program", "beforeProgram", "afterProgram");
         tracing?.pop();
 
+        if(options.metaprogram) {
+            (globalThis as any).__ts_meta_program = program;
+        }
+        else {
+            (globalThis as any).__ts_program = program;
+        }
+
         return program;
 
         function addResolutionDiagnostics(list: Diagnostic[] | undefined) {

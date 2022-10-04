@@ -7110,6 +7110,11 @@ namespace ts {
             const savedAwaitContext = inAwaitContext();
 
             const modifierFlags = modifiersToFlags(modifiers);
+
+            if(modifierFlags & ModifierFlags.Macro) {
+                addMetaprogramSourceFile(fileName);
+            }
+
             parseExpected(SyntaxKind.FunctionKeyword);
             const asteriskToken = parseOptionalToken(SyntaxKind.AsteriskToken);
             // We don't parse the name here in await context, instead we will report a grammar error in the checker.

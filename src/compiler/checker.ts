@@ -395,6 +395,7 @@ namespace ts {
         // extra cost of calling `getParseTreeNode` when calling these functions from inside the
         // checker.
         const checker: TypeChecker = {
+            getProgram: () => host as any as Program,
             getNodeCount: () => sum(host.getSourceFiles(), "nodeCount"),
             getIdentifierCount: () => sum(host.getSourceFiles(), "identifierCount"),
             getSymbolCount: () => sum(host.getSourceFiles(), "symbolCount") + symbolCount,
@@ -9726,6 +9727,11 @@ namespace ts {
             // Handle catch clause variables
             Debug.assertIsDefined(symbol.valueDeclaration);
             const declaration = symbol.valueDeclaration;
+
+            if(isVariableDeclaration(declaration) && declaration.initializer && isMacroCallExpressionNode(declaration.initializer)) {
+                return checkCallExpression(declaration.initializer);
+            }
+
             if (isCatchClauseVariableDeclarationOrBindingElement(declaration)) {
                 const typeNode = getEffectiveTypeAnnotationNode(declaration);
                 if (typeNode === undefined) {
@@ -30653,7 +30659,7 @@ namespace ts {
                 return undefined;
             }
             const thisType = getThisTypeOfSignature(signature);
-            if (thisType && thisType !== voidType && node.kind !== SyntaxKind.NewExpression && !isMacroCallExpressionNode(node)) {
+            if (thisType && thisType !== voidType && node.kind !== SyntaxKind.NewExpression && !isMacroCallExpressionNode(node) && !isMacroTaggedTemplateExpressionNode(node)) {
                 // If the called expression is not of the form `x.f` or `x["f"]`, then sourceType = voidType
                 // If the signature's 'this' type is voidType, then the check is skipped -- anything is compatible.
                 // If the expression is a new expression, then the check is skipped.
@@ -31076,6 +31082,29 @@ namespace ts {
                 result = chooseOverload(candidates, assignableRelation, isSingleNonGenericCandidate, signatureHelpTrailingComma);
             }
             if (result) {
+                if(isMacroCallExpressionNode(node)) {
+                    if(result.declaration && isMacroDeclarationNode(result.declaration)) {
+                        bindMacro("function", result.declaration, node);
+                    }
+
+                    const alternateReturnTypeDefinition = checkFunctionMacro(node, checker, reportCheckApiDiagnostic(node));
+                    if(alternateReturnTypeDefinition) {
+                        const returnType = getTypeFromTypeDefinition(node, alternateReturnTypeDefinition);
+                        result.resolvedReturnType = returnType;
+                    }
+                }
+
+                if(isMacroTaggedTemplateExpressionNode(node)) {
+                    if(result.declaration && isMacroDeclarationNode(result.declaration)) {
+                        bindMacro("taggedTemplate", result.declaration, node);
+                    }
+
+                    const alternateReturnTypeDefinition = checkTaggedTemplateExpressionMacro(node, checker, reportCheckApiDiagnostic(node));
+                    if(alternateReturnTypeDefinition) {
+                        const returnType = getTypeFromTypeDefinition(node, alternateReturnTypeDefinition);
+                        result.resolvedReturnType = returnType;
+                    }
+                }
                 return result;
             }
 
@@ -32137,11 +32166,37 @@ namespace ts {
             }
         }
 
-        function checkMacroCallExpression(call: CallExpression, declaration: MacroDeclarationNode) {
+        function capitalize(str: string) {
+            return str[0].toUpperCase() + str.slice(1);
+        }
+
+        function checkMatchingMacroDeclaration<T extends MacroDeclarationType>(type: T, declarationNode: MacroDeclarationNode, node: Node) {
+            const thisParameterNode = declarationNode.parameters.find(x => isIdentifier(x.name) && x.name.escapedText === "this");
+            const thisTypeNode = thisParameterNode?.type;
+
+            if(!thisTypeNode || !isTypeReferenceNode(thisTypeNode) || !isIdentifier(thisTypeNode.typeName)) {
+                error(node, Diagnostics.Macro_declaration_is_missing_context_parameter_type);
+                return;
+            }
+
+            const macroTypeName = capitalize(type);
+            const expectedTypeName = capitalize(`${type}Macro`);
+
+            const typeName = thisTypeNode.typeName.escapedText.toString();
+
+            if(typeName !== expectedTypeName) {
+                error(node, Diagnostics.Macro_declaration_has_0_context_and_can_t_be_invoked_as_a_1_macro, typeName, macroTypeName);
+                return;
+            }
+        }
+
+        function checkGrammarMacroCallExpression(call: CallExpression, declaration: MacroDeclarationNode) {
             if(!isMacroCallExpressionNode(call)) {
                 error(call, Diagnostics.Macros_must_be_invoked_with_the_operator);
                 return;
             }
+
+            checkMatchingMacroDeclaration("function", declaration, call);
 
             const callSourceFile = getSourceFileOfNode(call);
             const declarationSourceFile = getSourceFileOfNode(declaration);
@@ -32150,7 +32205,25 @@ namespace ts {
                 return;
             }
 
-            bindMacro("function", declaration, call);
+            // bindMacro("function", declaration, call);
+        }
+
+        function checkGrammarMacroTaggedTemplateExpression(expr: TaggedTemplateExpression, declaration: MacroDeclarationNode) {
+            if(!isMacroTaggedTemplateExpressionNode(expr)) {
+                error(expr, Diagnostics.Macros_must_be_invoked_with_the_operator);
+                return;
+            }
+
+            checkMatchingMacroDeclaration("taggedTemplate", declaration, expr);
+
+            const callSourceFile = getSourceFileOfNode(expr);
+            const declarationSourceFile = getSourceFileOfNode(declaration);
+            if(callSourceFile.fileName === declarationSourceFile.fileName) {
+                error(expr, Diagnostics.Macros_can_t_be_used_in_the_same_file_they_are_defined_in);
+                return;
+            }
+
+            // bindMacro("taggedTemplate", declaration, expr);
         }
 
         /**
@@ -32162,12 +32235,6 @@ namespace ts {
             checkGrammarTypeArguments(node, node.typeArguments);
 
             const signature = getResolvedSignature(node, /*candidatesOutArray*/ undefined, checkMode);
-
-            if(isCallExpression(node)) {
-                if(signature.declaration && isMacroDeclarationNode(signature.declaration)) {
-                    checkMacroCallExpression(node, signature.declaration);
-                }
-            }
 
             if (signature === resolvingSignature) {
                 // CheckMode.SkipGenericFunctions is enabled and this is a call to a generic function that
@@ -32202,6 +32269,19 @@ namespace ts {
             // In JavaScript files, calls to any identifier 'require' are treated as external module imports
             if (isInJSFile(node) && isCommonJsRequire(node)) {
                 return resolveExternalModuleTypeByLiteral(node.arguments![0] as StringLiteral);
+            }
+
+            if(isMacroCallExpressionNode(node)) {
+                if(signature.declaration && isMacroDeclarationNode(signature.declaration)) {
+                    checkGrammarMacroCallExpression(node, signature.declaration);
+                    bindMacro("function", signature.declaration, node);
+
+                    const alternateReturnTypeDefinition = checkFunctionMacro(node, checker, reportCheckApiDiagnostic(node));
+                    if(alternateReturnTypeDefinition) {
+                        const returnType = getTypeFromTypeDefinition(node, alternateReturnTypeDefinition);
+                        return returnType;
+                    }
+                }
             }
 
             const returnType = getReturnTypeOfSignature(signature);
@@ -32398,13 +32478,118 @@ namespace ts {
             return false;
         }
 
+
+        function reportCheckApiDiagnostic(node: Node) {
+            return (diagnostic: CheckApiDiagnostic) => {
+                if(diagnostic.type === "error") {
+                    error(diagnostic.node ?? node, Diagnostics.Check_error_Colon_0, diagnostic.message);
+                }
+                else if(diagnostic.type === "suggestion") {
+                    error(diagnostic.node ?? node, Diagnostics.Check_suggestion_Colon_0, diagnostic.message);
+                }
+                else if(diagnostic.type === "message") {
+                    error(diagnostic.node ?? node, Diagnostics.Check_message_Colon_0, diagnostic.message);
+                }
+            };
+        }
+
+        function getTypeFromIntrinsicTypeDefinition(typeDefinition: IntrinsicTypeDefinition): Type {
+            switch(typeDefinition.type) {
+                case IntrinsicTypes.String:
+                    return stringType;
+                case IntrinsicTypes.Number:
+                    return numberType;
+                case IntrinsicTypes.Boolean:
+                    return booleanType;
+                case IntrinsicTypes.Any:
+                    return anyType;
+                case IntrinsicTypes.Null:
+                    return nullType;
+                case IntrinsicTypes.Undefined:
+                    return undefinedType;
+                case IntrinsicTypes.Void:
+                    return voidType;
+                case IntrinsicTypes.Never:
+                    return neverType;
+                default:
+                    throw new Error("Unresolved intrinsic type kind");
+            }
+        }
+
+        function getParametersTextFromArity(arity: number) {
+            if(arity === 0) return "";
+            return `<${Array.from({ length: arity }).map((_v, index) => `T${index + 1}`).join(", ")}`;
+        }
+
+        function getTypeFromTypeDefinition(node: Node, typeDefinition: TypeDefinition): Type {
+            if(isIntrinsicTypeDefinition(typeDefinition)) {
+                return getTypeFromIntrinsicTypeDefinition(typeDefinition);
+            }
+
+            if(isArrayTypeDefinition(typeDefinition)) {
+                return createArrayType(getTypeFromTypeDefinition(node, typeDefinition.elementType));
+            }
+
+            if(isUnionTypeDefinition(typeDefinition)) {
+                return getUnionType(typeDefinition.types.map(x => getTypeFromTypeDefinition(node, x)));
+            }
+
+            if(isIntersectionTypeDefinition(typeDefinition)) {
+                return getIntersectionType(typeDefinition.types.map(x => getTypeFromTypeDefinition(node, x)));
+            }
+
+            if(isGlobalReferenceTypeDefinition(typeDefinition)) {
+                const type = getGlobalType(escapeLeadingUnderscores(typeDefinition.name), typeDefinition.arity, /* reportError */ false);
+                if(!type) {
+                    error(node, Diagnostics.Check_error_Colon_0, `Could not find global type ${typeDefinition.name}}${getParametersTextFromArity(typeDefinition.arity)}.`);
+                    return neverType;
+                }
+
+                return type;
+            }
+
+            if(isGenericInstanceTypeDefinition(typeDefinition)) {
+                return createTypeReference(getTypeFromTypeDefinition(node, typeDefinition.type) as GenericType, typeDefinition.typeArguments.map(x => getTypeFromTypeDefinition(node, x)));
+            }
+
+            if(isObjectTypeDefinition(typeDefinition)) {
+                const members = createSymbolTable();
+
+                for(const memberDefinition of typeDefinition.members) {
+                    const symbolFlags = SymbolFlags.Property | (memberDefinition.optional ? SymbolFlags.Optional : 0);
+                    const symbol = createSymbol(symbolFlags, escapeLeadingUnderscores(memberDefinition.name));
+
+                    symbol.type = getTypeFromTypeDefinition(node, memberDefinition);
+
+                    members.set(symbol.escapedName, symbol);
+                }
+
+                const type = createAnonymousType(undefined, members, emptyArray, emptyArray, emptyArray);
+                type.objectFlags |= (ObjectFlags.ObjectLiteral | ObjectFlags.ContainsObjectOrArrayLiteral);
+
+                return type;
+            }
+
+            if(isObjectMemberTypeDefinition(typeDefinition)) {
+                return getTypeFromTypeDefinition(node, typeDefinition.type);
+            }
+
+            throw new Error(`Unresolved type definition kind ${TypeDefinitionKind[typeDefinition.kind]}`);
+        }
+
         function checkTaggedTemplateExpression(node: TaggedTemplateExpression): Type {
             if (!checkGrammarTaggedTemplateChain(node)) checkGrammarTypeArguments(node, node.typeArguments);
             if (languageVersion < ScriptTarget.ES2015) {
                 checkExternalEmitHelpers(node, ExternalEmitHelpers.MakeTemplateObject);
             }
+
             const signature = getResolvedSignature(node);
             checkDeprecatedSignature(signature, node);
+
+            if(signature.declaration && isMacroDeclarationNode(signature.declaration) && isMacroTaggedTemplateExpressionNode(node)) {
+                checkGrammarMacroTaggedTemplateExpression(node, signature.declaration);
+            }
+
             return getReturnTypeOfSignature(signature);
         }
 
@@ -33322,7 +33507,7 @@ namespace ts {
             }
 
             if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
-                checkMacroFunction(node);
+                checkMacroDeclaration(node);
             }
 
             // The identityMapper object is used to indicate that function expressions are wildcards
@@ -33410,7 +33595,7 @@ namespace ts {
             checkAllCodePathsInNonVoidFunctionReturnOrThrow(node, returnType);
 
             if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
-                checkMacroFunction(node);
+                checkMacroDeclaration(node);
             }
 
             if (node.body) {
@@ -37579,7 +37764,7 @@ namespace ts {
             }
         }
 
-        function checkMacroFunction(node: Node): void {
+        function checkMacroDeclaration(node: Node): void {
             if(isFunctionDeclaration(node) || isFunctionExpression(node)) {
                 if(!node.name) {
                     error(node, Diagnostics.Macro_functions_must_be_named);
@@ -37612,7 +37797,7 @@ namespace ts {
             }
 
             if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
-                checkMacroFunction(node);
+                checkMacroDeclaration(node);
             }
 
             if (hasBindableName(node)) {
@@ -38408,7 +38593,7 @@ namespace ts {
                 return;
             }
 
-            const type = convertAutoToAny(getTypeOfSymbol(symbol));
+            let type = convertAutoToAny(getTypeOfSymbol(symbol));
             if (node === symbol.valueDeclaration) {
                 // Node is the primary declaration of the symbol, just validate the initializer
                 // Don't validate for-in initializer as it is already an error
@@ -38498,6 +38683,7 @@ namespace ts {
 
         function checkVariableDeclaration(node: VariableDeclaration) {
             tracing?.push(tracing.Phase.Check, "checkVariableDeclaration", { kind: node.kind, pos: node.pos, end: node.end, path: (node as TracingNode).tracingPath });
+
             checkGrammarVariableDeclaration(node);
             checkVariableLikeDeclaration(node);
             tracing?.pop();

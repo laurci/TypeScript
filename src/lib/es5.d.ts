@@ -1591,6 +1591,11 @@ type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;
 type NonNullable<T> = T & {};
 
 /**
+ * Union with null
+ */
+type Nullable<T> = T | null;
+
+/**
  * Obtain the parameters of a function type in a tuple
  */
 type Parameters<T extends (...args: any) => any> = T extends (...args: infer P) => any ? P : never;
