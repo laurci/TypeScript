@@ -7,7 +7,8 @@ namespace ts {
         Union,
         Intersection,
         GenericInstance,
-        GlobalReference
+        GlobalReference,
+        ResolvedType
     }
 
     export interface TypeDefinition<T extends TypeDefinitionKind = TypeDefinitionKind> {
@@ -61,6 +62,10 @@ namespace ts {
         arity: number;
     }
 
+    export interface ResolvedTypeDefinition extends TypeDefinition<TypeDefinitionKind.ResolvedType> {
+        type: Type;
+    }
+
     export function isIntrinsicTypeDefinition(type: TypeDefinition): type is IntrinsicTypeDefinition {
         return type.kind === TypeDefinitionKind.Intrinsic;
     }
@@ -91,6 +96,10 @@ namespace ts {
 
     export function isGlobalReferenceTypeDefinition(type: TypeDefinition): type is GlobalReferenceTypeDefinition {
         return type.kind === TypeDefinitionKind.GlobalReference;
+    }
+
+    export function isResolvedTypeDefinition(type: TypeDefinition): type is ResolvedTypeDefinition {
+        return type.kind === TypeDefinitionKind.ResolvedType;
     }
 
     export const typeDefinitionFactory = {
@@ -144,6 +153,12 @@ namespace ts {
                 kind: TypeDefinitionKind.GlobalReference,
                 name,
                 arity
+            };
+        },
+        createResolvedTypeDefinition(type: Type): ResolvedTypeDefinition {
+            return {
+                kind: TypeDefinitionKind.ResolvedType,
+                type
             };
         }
     } as const;

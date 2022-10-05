@@ -32522,6 +32522,10 @@ namespace ts {
         }
 
         function getTypeFromTypeDefinition(node: Node, typeDefinition: TypeDefinition): Type {
+            if(isResolvedTypeDefinition(typeDefinition)) {
+                return typeDefinition.type;
+            }
+
             if(isIntrinsicTypeDefinition(typeDefinition)) {
                 return getTypeFromIntrinsicTypeDefinition(typeDefinition);
             }
