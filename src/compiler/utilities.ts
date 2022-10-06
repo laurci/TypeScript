@@ -3217,6 +3217,11 @@ namespace ts {
         return heritageClause && heritageClause.types.length > 0 ? heritageClause.types[0] : undefined;
     }
 
+    export function getClassDerivesHeritageElements(node: ClassLikeDeclaration) {
+        const heritageClause = getHeritageClause(node.heritageClauses, SyntaxKind.DerivesKeyword);
+        return heritageClause ? heritageClause.types : emptyArray;
+    }
+
     export function getEffectiveImplementsTypeNodes(node: ClassLikeDeclaration): undefined | readonly ExpressionWithTypeArguments[]{
         if (isInJSFile(node)) {
             return getJSDocImplementsTags(node).map(n => n.class);

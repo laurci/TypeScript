@@ -10394,7 +10394,7 @@ namespace ts {
                     }
                     else if (type.symbol.flags & (SymbolFlags.Class | SymbolFlags.Interface)) {
                         if (type.symbol.flags & SymbolFlags.Class) {
-                            resolveBaseTypesOfClass(type);
+                            resolveBaseTypesOfClass(type);                
                         }
                         if (type.symbol.flags & SymbolFlags.Interface) {
                             resolveBaseTypesOfInterface(type);
@@ -11088,6 +11088,20 @@ namespace ts {
                         }
                     }
                 }
+
+                const classDeclaration = getClassLikeDeclarationOfSymbol(symbol);
+                if(classDeclaration) {
+                    const deriveTypes = getClassDerivesHeritageElements(classDeclaration).map(node => getTypeFromTypeNode(node));
+                    for(let deriveType of deriveTypes) {
+                        const members = getMembersOfSymbol(deriveType.symbol);
+                        
+                        members.forEach((symbol, key) => {
+                            links[resolutionKind]?.set(key, symbol);
+                        });
+                    }
+                }
+                
+
                 const assignments = symbol.assignmentDeclarationMembers;
                 if (assignments) {
                     const decls = arrayFrom(assignments.values());
@@ -45061,6 +45075,7 @@ namespace ts {
         function checkGrammarClassDeclarationHeritageClauses(node: ClassLikeDeclaration) {
             let seenExtendsClause = false;
             let seenImplementsClause = false;
+            let seenDerivesClause = false;
 
             if (!checkGrammarDecoratorsAndModifiers(node) && node.heritageClauses) {
                 for (const heritageClause of node.heritageClauses) {
@@ -45079,13 +45094,19 @@ namespace ts {
 
                         seenExtendsClause = true;
                     }
-                    else {
+                    else if(heritageClause.token === SyntaxKind.ImplementsKeyword) {
                         Debug.assert(heritageClause.token === SyntaxKind.ImplementsKeyword);
                         if (seenImplementsClause) {
                             return grammarErrorOnFirstToken(heritageClause, Diagnostics.implements_clause_already_seen);
                         }
 
                         seenImplementsClause = true;
+                    } else {
+                        Debug.assert(heritageClause.token === SyntaxKind.DerivesKeyword);
+                        if(seenDerivesClause) {
+                            return grammarErrorOnFirstToken(heritageClause, Diagnostics.Derives_clause_already_seen);
+                        }
+                        seenDerivesClause = true;
                     }
 
                     // Grammar checking heritageClause inside class declaration

@@ -5207,6 +5207,9 @@ namespace ts {
                 case SyntaxKind.ImplementsKeyword:
                     node.transformFlags |= TransformFlags.ContainsTypeScript;
                     break;
+                case SyntaxKind.DerivesKeyword:
+                    node.transformFlags |= TransformFlags.ContainsTypeScript;
+                    break;
                 default:
                     return Debug.assertNever(token);
             }

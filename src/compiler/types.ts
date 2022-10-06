@@ -125,6 +125,7 @@ namespace ts {
         EnumKeyword,
         ExportKeyword,
         ExtendsKeyword,
+        DerivesKeyword,
         FalseKeyword,
         FinallyKeyword,
         ForKeyword,
@@ -582,6 +583,7 @@ namespace ts {
         | SyntaxKind.EnumKeyword
         | SyntaxKind.ExportKeyword
         | SyntaxKind.ExtendsKeyword
+        | SyntaxKind.DerivesKeyword
         | SyntaxKind.FalseKeyword
         | SyntaxKind.FinallyKeyword
         | SyntaxKind.ForKeyword
@@ -3323,7 +3325,7 @@ namespace ts {
     export interface HeritageClause extends Node {
         readonly kind: SyntaxKind.HeritageClause;
         readonly parent: InterfaceDeclaration | ClassLikeDeclaration;
-        readonly token: SyntaxKind.ExtendsKeyword | SyntaxKind.ImplementsKeyword;
+        readonly token: SyntaxKind.ExtendsKeyword | SyntaxKind.ImplementsKeyword | SyntaxKind.DerivesKeyword;
         readonly types: NodeArray<ExpressionWithTypeArguments>;
     }
 

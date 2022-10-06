@@ -103,6 +103,7 @@ namespace ts {
         enum: SyntaxKind.EnumKeyword,
         export: SyntaxKind.ExportKeyword,
         extends: SyntaxKind.ExtendsKeyword,
+        derives: SyntaxKind.DerivesKeyword,
         false: SyntaxKind.FalseKeyword,
         finally: SyntaxKind.FinallyKeyword,
         for: SyntaxKind.ForKeyword,
