@@ -59,6 +59,10 @@ namespace ts {
                     }
                 }
 
+                if(isClassDeclaration(node)) {
+                    return transformClassDerivesMacros(context, node);
+                }
+
                 if(isMacroCallExpressionNode(node)) {
                     const binding = getMacroBinding("function", node);
                     if(binding) {

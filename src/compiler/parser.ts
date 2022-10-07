@@ -7130,7 +7130,13 @@ namespace ts {
             setAwaitContext(savedAwaitContext);
             const node = factory.createFunctionDeclaration(modifiers, asteriskToken, name, typeParameters, parameters, type, body);
             (node as Mutable<FunctionDeclaration>).illegalDecorators = decorators;
-            return withJSDoc(finishNode(node, pos), hasJSDoc);
+            const decl = withJSDoc(finishNode(node, pos), hasJSDoc);
+            
+            if(isMacroDeclarationNode(decl)) {
+                tryBindDeriveMacroNode(decl);
+            }
+
+            return decl;
         }
 
         function parseConstructorName() {
