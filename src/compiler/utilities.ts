@@ -4462,6 +4462,9 @@ namespace ts {
     /** Don't call this for `--outFile`, just for `--outDir` or plain emit. `--outFile` needs additional checks. */
     export function sourceFileMayBeEmitted(sourceFile: SourceFile, host: SourceFileMayBeEmittedHost, forceDtsEmit?: boolean) {
         const options = host.getCompilerOptions();
+
+        if(!options.metaprogram && getMetaprogramSourceFiles().indexOf(sourceFile.path) >= 0) return false;
+        
         return !(options.noEmitForJsFiles && isSourceFileJS(sourceFile)) &&
             !sourceFile.isDeclarationFile &&
             !host.isSourceFileFromExternalLibrary(sourceFile) &&
