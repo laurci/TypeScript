@@ -4464,7 +4464,7 @@ namespace ts {
         const options = host.getCompilerOptions();
 
         if(!options.metaprogram && getMetaprogramSourceFiles().indexOf(sourceFile.path) >= 0) return false;
-        
+
         return !(options.noEmitForJsFiles && isSourceFileJS(sourceFile)) &&
             !sourceFile.isDeclarationFile &&
             !host.isSourceFileFromExternalLibrary(sourceFile) &&
