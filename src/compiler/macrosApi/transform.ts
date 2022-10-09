@@ -4,11 +4,94 @@ namespace ts {
         remove(): void;
     };
 
+    type StatementMatcher = (node: Statement) => boolean;
+
+    type TransformSourceFile = SourceFile & {
+        appendStatement(node: Statement): void;
+        prependStatement(node: Statement): void;
+        insertStatementBefore(node: Statement, match: StatementMatcher): void;
+        insertStatementAfter(node: Statement, match: StatementMatcher): void;
+    };
     interface TransformApi<T extends Node> {
         node: TransformNode<T>;
         factory: NodeFactory;
         context: TransformationContext;
-        sourceFile: SourceFile;
+        sourceFile: TransformSourceFile;
+    }
+
+    interface StatementPatch {
+        condition?: StatementMatcher;
+        node: Statement;
+    }
+
+    export class SourceFileStatementsPatcher {
+        private before: StatementPatch[] = [];
+        private after: StatementPatch[] = [];
+
+        append(node: Statement) {
+            this.after.push({
+                node
+            });
+        }
+
+        prepend(node: Statement) {  
+            this.before.push({
+                node
+            });
+        }
+
+        insertBefore(node: Statement, match: StatementMatcher) {
+            this.before.push({
+                node,
+                condition: match
+            });
+        }
+
+        insertAfter(node: Statement, match: StatementMatcher) {
+            this.after.push({
+                node,
+                condition: match
+            });
+        }
+
+        patch(factory: NodeFactory, sourceFile: SourceFile) {
+            const statements = sourceFile.statements.slice();
+
+            for(let before of this.before) {
+                if(!before.condition) {
+                    statements.unshift(before.node);
+                    continue;
+                }
+
+                for(let i = 0; i < statements.length; i++) {
+                    if(before.condition(statements[i])) {
+                        statements.splice(i, 0, before.node);
+                        break;
+                    }
+                }
+            }
+
+            for(let after of this.after) {
+                if(!after.condition) {
+                    statements.push(after.node);
+                    continue;
+                }
+
+                for(let i = 0; i < statements.length; i++) {
+                    if(after.condition(statements[i])) {
+                        statements.splice(i + 1, 0, after.node);
+                        break;
+                    }
+                }
+            }
+
+            const newSourceFile = {
+                ...sourceFile,
+                statements: factory.createNodeArray(statements)
+            } as SourceFile;
+
+            return newSourceFile;
+        }
     }
 
     export type TransformApiFunction<T extends Node> = (api: TransformApi<T>) => void;
@@ -25,7 +108,7 @@ namespace ts {
         };
     }
 
-    export function executeTransformHook(hooks: MacroHooks<Node>, context: TransformationContext, node: Node) {
+    export function executeTransformHook(hooks: MacroHooks<Node>, context: TransformationContext, node: Node, statementPatcher: SourceFileStatementsPatcher) {
         return hooks.transform.reduce((node, hook) => {
             let replacement: Node | undefined;
             let remove = false;
@@ -35,6 +118,7 @@ namespace ts {
                     ...node,
                     replace(newNode) {
                         (newNode.parent as any) = node.parent; // set parent
+                        (newNode.pos as any) = node.pos; // set pos
                         replacement = newNode;
                     },
                     remove() {
@@ -43,7 +127,21 @@ namespace ts {
                 },
                 factory,
                 context,
-                sourceFile: getSourceFileOfNode(node)
+                sourceFile: {
+                    ...getSourceFileOfNode(node),
+                    appendStatement(node) {
+                        statementPatcher.append(node);
+                    },
+                    prependStatement(node) {
+                        statementPatcher.prepend(node);
+                    },
+                    insertStatementBefore(node, match) {
+                        statementPatcher.insertBefore(node, match);
+                    },
+                    insertStatementAfter(node, match) {
+                        statementPatcher.insertAfter(node, match);
+                    }
+                }
             };
 
             hook(api);
@@ -61,7 +159,7 @@ namespace ts {
     }
 
 
-    export function transformCallExpressionMacro(context: TransformationContext, node: MacroCallExpressionNode): Node | undefined {
+    export function transformCallExpressionMacro(context: TransformationContext, statementPatcher: SourceFileStatementsPatcher, node: MacroCallExpressionNode): Node | undefined {
         const declaration = getMacroBinding("function", node);
         if(!declaration) return node;
 
@@ -73,10 +171,10 @@ namespace ts {
 
         if(!hooks) return node;
 
-        return executeTransformHook(hooks, context, node);
+        return executeTransformHook(hooks, context, node, statementPatcher);
     }
 
-    export function transformTaggedTemplateExpressionMacro(context: TransformationContext, node: MacroTaggedTemplateExpressionNode): Node | undefined {
+    export function transformTaggedTemplateExpressionMacro(context: TransformationContext, statementPatcher: SourceFileStatementsPatcher, node: MacroTaggedTemplateExpressionNode): Node | undefined {
         const declaration = getMacroBinding("taggedTemplate", node);
         if(!declaration) return node;
 
@@ -88,10 +186,10 @@ namespace ts {
 
         if(!hooks) return node;
 
-        return executeTransformHook(hooks, context, node);
+        return executeTransformHook(hooks, context, node, statementPatcher);
     }
 
-    export function transformClassDerivesMacros(context: TransformationContext, node: ClassDeclaration): ClassDeclaration | undefined {
+    export function transformClassDerivesMacros(context: TransformationContext, statementPatcher: SourceFileStatementsPatcher, node: ClassDeclaration): ClassDeclaration | undefined {
         const deriveMacrosDeclarations = getDeriveMacros(node);
 
         let result = node;
@@ -106,7 +204,7 @@ namespace ts {
 
             if(!hooks) continue;
 
-            const hookResult = executeTransformHook(hooks, context, result) as ClassDeclaration | undefined;
+            const hookResult = executeTransformHook(hooks, context, result, statementPatcher) as ClassDeclaration | undefined;
 
             if(!hookResult) return undefined;
 
