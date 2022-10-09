@@ -8,6 +8,7 @@ import del from "del";
 import rename from "gulp-rename";
 import concat from "gulp-concat";
 import merge2 from "merge2";
+import through from "through2";
 import gulp from "gulp";
 import { append, transform } from "gulp-insert";
 import { prependFile } from "./scripts/build/prepend.mjs";
@@ -18,7 +19,6 @@ import cmdLineOptions from "./scripts/build/options.mjs";
 
 const { src, dest, task, parallel, series, watch } = gulp;
 
-const through = require("through2");
 
 const copyright = "CopyrightNotice.txt";
 const cleanTasks = [];
