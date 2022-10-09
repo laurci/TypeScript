@@ -92,7 +92,7 @@ namespace ts {
     export type MacroExecutor<T extends BaseMacro = BaseMacro> = (this: T, ...args: any[]) => void;
 
     const macroBindings = new Map<Node, MacroDeclaration>();
-    const derviceMacros = new Map<string, DeriveMacroDeclaration>();
+    const deriveMacros = new Map<string, DeriveMacroDeclaration>();
     const macroHooks = new Map<MacroDeclaration, MacroHooks<Node>>();
     const metaprogramSources = new Set<string>();
 
@@ -113,8 +113,8 @@ namespace ts {
             if(isIdentifier(thisParameter.type.typeName) && thisParameter.type.typeName.escapedText === "DeriveMacro") {
                 const firstTypeArgument = thisParameter.type.typeArguments?.[0];
                 if(firstTypeArgument && isTypeReferenceNode(firstTypeArgument) && isIdentifier(firstTypeArgument.typeName)) {
-                    if(!derviceMacros.has(firstTypeArgument.typeName.escapedText.toString())) {
-                        derviceMacros.set(firstTypeArgument.typeName.escapedText.toString(), {
+                    if(!deriveMacros.has(firstTypeArgument.typeName.escapedText.toString())) {
+                        deriveMacros.set(firstTypeArgument.typeName.escapedText.toString(), {
                             type: "derive",
                             node: declaration
                         });
@@ -130,7 +130,7 @@ namespace ts {
         const derivesElements = getClassDerivesHeritageElements(node);
         for(let derivesElement of derivesElements) {
             if(isIdentifier(derivesElement.expression)) {
-                const declaration = derviceMacros.get(derivesElement.expression.escapedText.toString());
+                const declaration = deriveMacros.get(derivesElement.expression.escapedText.toString());
                 if(declaration) {
                     declarations.push(declaration);
                 }
@@ -138,6 +138,10 @@ namespace ts {
         }
 
         return declarations;
+    }
+
+    export function getDeriveMacrosMap() {
+        return deriveMacros;
     }
 
     export function getMacroDeclarations(): MacroDeclaration[] {

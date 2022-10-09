@@ -3219,7 +3219,7 @@ namespace ts {
 
     export function getClassDerivesHeritageElements(node: ClassLikeDeclaration) {
         const heritageClause = getHeritageClause(node.heritageClauses, SyntaxKind.DerivesKeyword);
-        return heritageClause ? heritageClause.types : emptyArray;
+        return heritageClause?.types ?? [];
     }
 
     export function getEffectiveImplementsTypeNodes(node: ClassLikeDeclaration): undefined | readonly ExpressionWithTypeArguments[]{

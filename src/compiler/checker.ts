@@ -10394,7 +10394,7 @@ namespace ts {
                     }
                     else if (type.symbol.flags & (SymbolFlags.Class | SymbolFlags.Interface)) {
                         if (type.symbol.flags & SymbolFlags.Class) {
-                            resolveBaseTypesOfClass(type);                
+                            resolveBaseTypesOfClass(type);
                         }
                         if (type.symbol.flags & SymbolFlags.Interface) {
                             resolveBaseTypesOfInterface(type);
@@ -11092,15 +11092,15 @@ namespace ts {
                 const classDeclaration = getClassLikeDeclarationOfSymbol(symbol);
                 if(classDeclaration) {
                     const deriveTypes = getClassDerivesHeritageElements(classDeclaration).map(node => getTypeFromTypeNode(node));
-                    for(let deriveType of deriveTypes) {
+                    for(const deriveType of deriveTypes) {
                         const members = getMembersOfSymbol(deriveType.symbol);
-                        
+
                         members.forEach((symbol, key) => {
                             links[resolutionKind]?.set(key, symbol);
                         });
                     }
                 }
-                
+
 
                 const assignments = symbol.assignmentDeclarationMembers;
                 if (assignments) {
@@ -38611,7 +38611,7 @@ namespace ts {
                 return;
             }
 
-            let type = convertAutoToAny(getTypeOfSymbol(symbol));
+            const type = convertAutoToAny(getTypeOfSymbol(symbol));
             if (node === symbol.valueDeclaration) {
                 // Node is the primary declaration of the symbol, just validate the initializer
                 // Don't validate for-in initializer as it is already an error
@@ -40374,10 +40374,60 @@ namespace ts {
             if (!node.name && !hasSyntacticModifier(node, ModifierFlags.Default)) {
                 grammarErrorOnFirstToken(node, Diagnostics.A_class_declaration_without_the_default_modifier_must_have_a_name);
             }
+
+            checkDerivesHeritageClause(node);
             checkClassLikeDeclaration(node);
             forEach(node.members, checkSourceElement);
 
             registerForUnusedIdentifiersCheck(node);
+        }
+
+        function checkDerivesHeritageClause(node: ClassDeclaration) {
+            const elements = getClassDerivesHeritageElements(node);
+            const deriveMacros = getDeriveMacrosMap();
+
+            let hasError = false;
+
+            for(let element of elements) {
+                if(isIdentifier(element.expression)) {
+                    const name = element.expression.escapedText.toString();
+
+                    let type: Type | undefined;
+                    
+                    try {
+                        type = getTypeFromTypeNode(element);
+                    } catch(ex) {}
+
+                    if(!type?.symbol) {
+                        error(element, Diagnostics.Cannot_find_name_0, name);
+                        hasError = true;
+                        continue;
+                    }
+
+                    if(!(type.symbol.flags & SymbolFlags.Interface)) {
+                        error(element, Diagnostics.Derived_elements_must_be_interfaces);
+                        hasError = true;
+                        continue;
+                    }
+
+
+                    const declaration = deriveMacros.get(name);
+                    if(!declaration) {
+                        error(element, Diagnostics.Derived_interface_0_is_not_implemented_by_any_macro, name);
+                        hasError = true;
+                        continue;
+                    }
+
+                } else {
+                    error(element, Diagnostics.Derives_clause_must_be_used_with_indetifiers);
+                    hasError = true;
+                }
+            }
+
+            if(!hasError) {
+                checkDeriveHeritageClauseMacro(node, checker, reportCheckApiDiagnostic(node))
+            }
+
         }
 
         function checkClassLikeDeclaration(node: ClassLikeDeclaration) {
@@ -45101,7 +45151,8 @@ namespace ts {
                         }
 
                         seenImplementsClause = true;
-                    } else {
+                    }
+ else {
                         Debug.assert(heritageClause.token === SyntaxKind.DerivesKeyword);
                         if(seenDerivesClause) {
                             return grammarErrorOnFirstToken(heritageClause, Diagnostics.Derives_clause_already_seen);
@@ -45127,9 +45178,11 @@ namespace ts {
 
                         seenExtendsClause = true;
                     }
-                    else {
-                        Debug.assert(heritageClause.token === SyntaxKind.ImplementsKeyword);
+                    else if(heritageClause.token === SyntaxKind.ImplementsKeyword) {
                         return grammarErrorOnFirstToken(heritageClause, Diagnostics.Interface_declaration_cannot_have_implements_clause);
+                    } else {
+                        Debug.assert(heritageClause.token === SyntaxKind.DerivesKeyword);
+                        return grammarErrorOnFirstToken(heritageClause, Diagnostics.Interface_declaration_cannot_have_derives_clause);;
                     }
 
                     // Grammar checking heritageClause inside class declaration
