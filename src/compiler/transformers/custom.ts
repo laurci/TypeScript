@@ -43,6 +43,8 @@ namespace ts {
         const metaprogramSourceFiles = getMetaprogramSourceFiles();
 
         return (sourceFile: SourceFile) => {
+            const statementPatcher = new SourceFileStatementsPatcher();
+
             const visitor = (node: Node): VisitResult<Node> => {
                 if(!options.metaprogram) {
                     // remove imports to files that import "compiler" (ignore type imports)
@@ -60,20 +62,20 @@ namespace ts {
                 }
 
                 if(isClassDeclaration(node)) {
-                    return transformClassDerivesMacros(context, node);
+                    return transformClassDerivesMacros(context, statementPatcher, node);
                 }
 
                 if(isMacroCallExpressionNode(node)) {
                     const binding = getMacroBinding("function", node);
                     if(binding) {
-                        return transformCallExpressionMacro(context, node);
+                        return transformCallExpressionMacro(context, statementPatcher, node);
                     }
                 }
 
                 if(isMacroTaggedTemplateExpressionNode(node)) {
                     const binding = getMacroBinding("taggedTemplate", node);
                     if(binding) {
-                        return transformTaggedTemplateExpressionMacro(context, node);
+                        return transformTaggedTemplateExpressionMacro(context, statementPatcher, node);
                     }
                 }
 
@@ -84,7 +86,7 @@ namespace ts {
                 return node;
             };
 
-            return visitEachChild(sourceFile, visitor, context);
+            return statementPatcher.patch(context.factory, visitEachChild(sourceFile, visitor, context));
         };
     }
 
