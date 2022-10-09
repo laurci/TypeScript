@@ -34,6 +34,7 @@ namespace ts {
                 node: {
                     ...node,
                     replace(newNode) {
+                        (newNode.parent as any) = node.parent; // set parent
                         replacement = newNode;
                     },
                     remove() {
@@ -88,6 +89,31 @@ namespace ts {
         if(!hooks) return node;
 
         return executeTransformHook(hooks, context, node);
+    }
+
+    export function transformClassDerivesMacros(context: TransformationContext, node: ClassDeclaration): ClassDeclaration | undefined {
+        const deriveMacrosDeclarations = getDeriveMacros(node);
+
+        let result = node;
+
+        for(let declaration of deriveMacrosDeclarations) {
+            const hooks = getHooksForMacro<"derive", DeriveMacro<any>>(declaration, (hooks) => ({
+                declaration,
+                ...createTransformMacroApi(hooks),
+                ...createCheckApi(hooks)
+            }));
+
+
+            if(!hooks) continue;
+
+            const hookResult = executeTransformHook(hooks, context, result) as ClassDeclaration | undefined;
+
+            if(!hookResult) return undefined;
+
+            result = hookResult;
+        }
+
+        return result;
     }
 
 }

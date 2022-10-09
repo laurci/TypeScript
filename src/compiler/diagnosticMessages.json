@@ -1594,6 +1594,26 @@
         "category": "Message",
         "code": 1810
     },
+    "Derives clause already seen": {
+        "category": "Error",
+        "code": 1811
+    },
+    "Derives clause must be used with indetifiers": {
+        "category": "Error",
+        "code": 1812
+    },
+    "Derived interface '{0}' is not implemented by any macro": {
+        "category": "Error",
+        "code": 1813
+    },
+    "Derived elements must be interfaces": {
+        "category": "Error",
+        "code": 1814
+    },
+    "Interface declaration cannot have derives clause": {
+        "category": "Error",
+        "code": 1815
+    },
 
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",

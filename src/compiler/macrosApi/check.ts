@@ -243,4 +243,22 @@ namespace ts {
 
         return executeCheckReturnTypeHook(hooks, node, checker, reportDiagnostic);
     }
+
+    export function checkDeriveHeritageClauseMacro(node: ClassDeclaration, checker: TypeChecker, reportDiagnostic: CheckApiReportDiagnostic) {
+        const deriveMacrosDeclarations = getDeriveMacros(node);
+
+        for(let declaration of deriveMacrosDeclarations) {
+            const hooks = getHooksForMacro<"derive", DeriveMacro<any>>(declaration, (hooks) => ({
+                declaration,
+                ...createTransformMacroApi(hooks),
+                ...createCheckApi(hooks)
+            }));
+
+
+            if(!hooks) continue;
+    
+            executeCheckReturnTypeHook(hooks, node, checker, reportDiagnostic);
+        }
+
+    }
 }

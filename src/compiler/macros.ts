@@ -50,7 +50,7 @@ namespace ts {
     type MacroNodesMap = MacroNodesMapper<{
         function: MacroCallExpressionNode;
         taggedTemplate: MacroTaggedTemplateExpressionNode;
-        derive: Node;
+        derive: ClassDeclaration;
     }>;
 
 
@@ -85,9 +85,14 @@ namespace ts {
 
     }
 
+    export interface DeriveMacro<_T> extends BaseMacro, MacroWithDeclaration<DeriveMacroDeclaration>, MacroWithTransformApi<ClassDeclaration>, MacroWithCheckApi<ClassDeclaration> {
+
+    }
+
     export type MacroExecutor<T extends BaseMacro = BaseMacro> = (this: T, ...args: any[]) => void;
 
     const macroBindings = new Map<Node, MacroDeclaration>();
+    const deriveMacros = new Map<string, DeriveMacroDeclaration>();
     const macroHooks = new Map<MacroDeclaration, MacroHooks<Node>>();
     const metaprogramSources = new Set<string>();
 
@@ -100,6 +105,43 @@ namespace ts {
 
     export function getMacroBinding<TType extends MacroDeclarationType>(_type: TType, node: MacroNodesMap[TType]): MacroDeclarationsMap[TType] | undefined {
         return macroBindings.get(node) as MacroDeclarationsMap[TType];
+    }
+
+    export function tryBindDeriveMacroNode(declaration: MacroDeclarationNode) {
+        const thisParameter = getThisParameter(declaration as FunctionDeclaration);
+        if(thisParameter && thisParameter.type && isTypeReferenceNode(thisParameter.type)) {
+            if(isIdentifier(thisParameter.type.typeName) && thisParameter.type.typeName.escapedText === "DeriveMacro") {
+                const firstTypeArgument = thisParameter.type.typeArguments?.[0];
+                if(firstTypeArgument && isTypeReferenceNode(firstTypeArgument) && isIdentifier(firstTypeArgument.typeName)) {
+                    if(!deriveMacros.has(firstTypeArgument.typeName.escapedText.toString())) {
+                        deriveMacros.set(firstTypeArgument.typeName.escapedText.toString(), {
+                            type: "derive",
+                            node: declaration
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    export function getDeriveMacros(node: ClassDeclaration): DeriveMacroDeclaration[] {
+        const declarations: DeriveMacroDeclaration[] = [];
+
+        const derivesElements = getClassDerivesHeritageElements(node);
+        for(let derivesElement of derivesElements) {
+            if(isIdentifier(derivesElement.expression)) {
+                const declaration = deriveMacros.get(derivesElement.expression.escapedText.toString());
+                if(declaration) {
+                    declarations.push(declaration);
+                }
+            }
+        }
+
+        return declarations;
+    }
+
+    export function getDeriveMacrosMap() {
+        return deriveMacros;
     }
 
     export function getMacroDeclarations(): MacroDeclaration[] {

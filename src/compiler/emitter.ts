@@ -3762,6 +3762,11 @@ namespace ts {
         }
 
         function emitHeritageClause(node: HeritageClause) {
+            // Don't emit derives
+            if(node.token === SyntaxKind.DerivesKeyword) {
+                return;
+            }
+
             writeSpace();
             writeTokenText(node.token, writeKeyword);
             writeSpace();

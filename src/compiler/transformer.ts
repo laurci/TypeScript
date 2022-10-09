@@ -1,4 +1,3 @@
-/* @internal */
 namespace ts {
     function getModuleTransformer(moduleKind: ModuleKind): TransformerFactory<SourceFile | Bundle> {
         switch (moduleKind) {
