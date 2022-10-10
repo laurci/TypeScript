@@ -11,7 +11,7 @@ namespace ts {
         return callDeferFunction;
     }
 
-    function insertDeferCall(statements: Statement[], callDeferFunction: Statement) {
+    function insertDeferCall(statements: Statement[], callDeferFunction: Statement, root = false) {
         const returnStatementIndex = statements.findIndex(statement => isReturnStatement(statement));
 
         if(returnStatementIndex > -1) {
@@ -21,7 +21,7 @@ namespace ts {
             return [...beforeReturnStatements, callDeferFunction, ...afterReturnStatements];
         }
 
-        return statements;
+        return root ? [...statements, callDeferFunction] : statements;
     }
 
     function getBlockVisitor(callDeferFunction: Statement, context: TransformationContext) {
@@ -115,7 +115,7 @@ namespace ts {
 
 
                         const statements = node.statements.filter(statement => !isDeferStatement(statement)).map(statement => blockVisitor(statement) as Statement);
-                        const newStatements = insertDeferCall(statements, callDeferFunction);
+                        const newStatements = insertDeferCall(statements, callDeferFunction, /* root */ true);
 
                         return context.factory.updateBlock(node, [
                             ...newStatements,
