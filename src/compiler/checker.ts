@@ -40154,9 +40154,9 @@ namespace ts {
         function checkDeferStatement(node: DeferStatement) {
             checkGrammarStatementInAmbientContext(node);
 
-            if(!isFunctionBlock(node.parent)) {
-                error(node, Diagnostics.Defer_statements_can_only_be_used_within_a_function_body);
-            }
+            // if(!isFunctionBlock(node.parent)) {
+            //     error(node, Diagnostics.Defer_statements_can_only_be_used_within_a_function_body);
+            // }
 
             checkSourceElement(node.body);
         }

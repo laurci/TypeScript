@@ -1,40 +1,32 @@
 /*@internal*/
 namespace ts {
-    function getDeferCallExpression(factory: NodeFactory, isAsync: boolean) {
-        let callDeferExpression = factory.createCallExpression(factory.createIdentifier("__defer"), [], []) as Expression;
+    function getDeferExecutor(factory: NodeFactory, isAsync: boolean) {
+
+        let callDeferExpression = factory.createCallExpression(factory.createIdentifier("__defer_fun"), [], []) as Expression;
         if(isAsync) {
             callDeferExpression = factory.createAwaitExpression(callDeferExpression);
         }
 
         const callDeferFunction = factory.createExpressionStatement(callDeferExpression);
 
-        return callDeferFunction;
+        return factory.createForOfStatement(
+            undefined,
+            factory.createVariableDeclarationList(
+                [factory.createVariableDeclaration(
+                    factory.createIdentifier("__defer_fun"),
+                    undefined,
+                    undefined,
+                    undefined
+                )],
+                ts.NodeFlags.Let
+            ),
+            factory.createIdentifier("__defer"),
+            factory.createBlock(
+                [callDeferFunction],
+                true
+            )
+        );
     }
-
-    function insertDeferCall(statements: Statement[], callDeferFunction: Statement, root = false) {
-        const returnStatementIndex = statements.findIndex(statement => isReturnStatement(statement));
-
-        if(returnStatementIndex > -1) {
-            const beforeReturnStatements = statements.slice(0, returnStatementIndex);
-            const afterReturnStatements = statements.slice(returnStatementIndex);
-
-            return [...beforeReturnStatements, callDeferFunction, ...afterReturnStatements];
-        }
-
-        return root ? [...statements, callDeferFunction] : statements;
-    }
-
-    function getBlockVisitor(callDeferFunction: Statement, context: TransformationContext) {
-        const v = (node: Node): Node => {
-            if(isBlock(node) && !isFunctionBlock(node)) {
-                const newStatements = insertDeferCall(Array.from(node.statements), callDeferFunction);
-                return visitEachChild(context.factory.createBlock(newStatements), v, context);
-            }
-
-            return visitEachChild(node, v, context);
-        };
-        return v;
-    };
 
     export function transformMetaprogramReferences(context: TransformationContext) {
         const Path = require("path") as typeof import("path");
@@ -90,37 +82,69 @@ namespace ts {
         };
     }
 
-    export function transformCustomSyntax(context: TransformationContext) {
+    function findChild<T extends Node>(node: Node, finder: (node: Node) => node is T): T | undefined {
+        if(finder(node)) {
+            return node;
+        }
+
+        return forEachChild(node, child => {
+            if(isBlock(child) && node.parent && isFunctionLike(node.parent)) {
+                return;
+            }
+
+            return findChild(child, finder);
+        });
+    }
+
+    export function transformDeferStatements(context: TransformationContext) {
         return (sourceFile: SourceFile) => {
             const visitor = (node: Node): VisitResult<Node> => {
-                if(isFunctionBody(node)) {
-                    const deferStatements = node.statements.filter(statement => isDeferStatement(statement)) as DeferStatement[];
+                if(isDeferStatement(node)) {
+                    const fn = findAncestor(node, isFunctionLike);
+                    const isAsync = fn && isAsyncFunction(fn);
 
-                    if(deferStatements.length > 0) {
+                    return factory.createCallExpression(
+                        factory.createPropertyAccessExpression(
+                            factory.createIdentifier("__defer"),
+                            "push"
+                        ),
+                        [],
+                        [
+                            factory.createArrowFunction(isAsync ? [
+                                factory.createModifier(SyntaxKind.AsyncKeyword)
+                            ] : [], [], [], undefined, undefined, factory.createBlock([
+                                visitEachChild(node.body, visitor, context)
+                            ]))
+                        ]
+                    );
+                }
+                if (isBlock(node) && isFunctionLike(node.parent)) {
+                    if(findChild(node, isDeferStatement)) {
                         const isAsync = node.parent ? isAsyncFunction(node.parent) : false;
 
-                        const deferredContent = deferStatements.map(x => x.body);
-                        const deferFunction = context.factory.createFunctionDeclaration(
-                            isAsync ? [context.factory.createModifier(SyntaxKind.AsyncKeyword)] : [],
-                            /*asteriskToken*/ undefined,
-                            "__defer",
-                            [],
-                            [],
-                            /*type*/ undefined,
-                            context.factory.createBlock(deferredContent, /*multiLine*/ true)
-                        );
-
-                        const callDeferFunction = getDeferCallExpression(context.factory, isAsync);
-                        const blockVisitor = getBlockVisitor(callDeferFunction, context);
-
-
-                        const statements = node.statements.filter(statement => !isDeferStatement(statement)).map(statement => blockVisitor(statement) as Statement);
-                        const newStatements = insertDeferCall(statements, callDeferFunction, /* root */ true);
-
-                        return context.factory.updateBlock(node, [
-                            ...newStatements,
-                            deferFunction
-                        ]);
+                        return factory.createBlock([
+                            factory.createVariableStatement(
+                                undefined,
+                                factory.createVariableDeclarationList(
+                                    [factory.createVariableDeclaration(
+                                        factory.createIdentifier("__defer"),
+                                        undefined,
+                                        factory.createArrayTypeNode(factory.createTypeReferenceNode(
+                                            factory.createIdentifier("Function"),
+                                            undefined
+                                        )),
+                                        factory.createArrayLiteralExpression(
+                                            [],
+                                            false
+                                        )
+                                    )],
+                                    NodeFlags.Const
+                                )
+                            ),
+                            factory.createTryStatement(visitEachChild(node, visitor, context), undefined, factory.createBlock([
+                                getDeferExecutor(factory, isAsync)
+                            ], /* multiline */ true))
+                        ], node.multiLine);
                     }
                 }
 
