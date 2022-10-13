@@ -878,7 +878,7 @@ namespace ts {
         }
 
         // @api
-        function createIdentifier(text: string, typeArguments?: readonly (TypeNode | TypeParameterDeclaration)[], originalKeywordKind?: SyntaxKind): Identifier {
+        function createIdentifier(text: string, typeArguments?: readonly (TypeNode | TypeParameterDeclaration)[], originalKeywordKind?: SyntaxKind, hasExtendedUnicodeEscape?: boolean): Identifier {
             const node = createBaseIdentifier(text, originalKeywordKind);
             if (typeArguments) {
                 // NOTE: we do not use `setChildren` here because typeArguments in an identifier do not contribute to transformations
@@ -886,6 +886,10 @@ namespace ts {
             }
             if (node.originalKeywordKind === SyntaxKind.AwaitKeyword) {
                 node.transformFlags |= TransformFlags.ContainsPossibleTopLevelAwait;
+            }
+            if (hasExtendedUnicodeEscape) {
+                node.hasExtendedUnicodeEscape = hasExtendedUnicodeEscape;
+                node.transformFlags |= TransformFlags.ContainsES2015;
             }
             return node;
         }
@@ -5207,6 +5211,9 @@ namespace ts {
                 case SyntaxKind.ImplementsKeyword:
                     node.transformFlags |= TransformFlags.ContainsTypeScript;
                     break;
+                case SyntaxKind.DerivesKeyword:
+                    node.transformFlags |= TransformFlags.ContainsTypeScript;
+                    break;
                 default:
                     return Debug.assertNever(token);
             }
@@ -5675,7 +5682,7 @@ namespace ts {
             setOriginalNode(clone, node);
 
             for (const key in node) {
-                if (clone.hasOwnProperty(key) || !node.hasOwnProperty(key)) {
+                if (hasProperty(clone, key) || !hasProperty(node, key)) {
                     continue;
                 }
 

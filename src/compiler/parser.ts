@@ -751,7 +751,7 @@ namespace ts {
         return visitNodes(cbNode, cbNodes, node.typeParameters) ||
             visitNodes(cbNode, cbNodes, node.parameters) ||
             visitNode(cbNode, node.type);
-    };
+    }
 
     function forEachChildInUnionOrIntersectionType<T>(node: UnionTypeNode | IntersectionTypeNode, cbNode: (node: Node) => T | undefined, cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
         return visitNodes(cbNode, cbNodes, node.types);
@@ -2194,8 +2194,9 @@ namespace ts {
                 // Store original token kind if it is not just an Identifier so we can report appropriate error later in type checker
                 const originalKeywordKind = token();
                 const text = internIdentifier(scanner.getTokenValue());
+                const hasExtendedUnicodeEscape = scanner.hasExtendedUnicodeEscape();
                 nextTokenWithoutCheck();
-                return finishNode(factory.createIdentifier(text, /*typeArguments*/ undefined, originalKeywordKind), pos);
+                return finishNode(factory.createIdentifier(text, /*typeArguments*/ undefined, originalKeywordKind, hasExtendedUnicodeEscape), pos);
             }
 
             if (token() === SyntaxKind.PrivateIdentifier) {
@@ -2288,7 +2289,7 @@ namespace ts {
 
         function parsePrivateIdentifier(): PrivateIdentifier {
             const pos = getNodePos();
-            const node = factory.createPrivateIdentifier(internPrivateIdentifier(scanner.getTokenText()));
+            const node = factory.createPrivateIdentifier(internPrivateIdentifier(scanner.getTokenValue()));
             nextToken();
             return finishNode(node, pos);
         }
@@ -2499,7 +2500,8 @@ namespace ts {
 
         function isHeritageClauseExtendsOrImplementsKeyword(): boolean {
             if (token() === SyntaxKind.ImplementsKeyword ||
-                token() === SyntaxKind.ExtendsKeyword) {
+                token() === SyntaxKind.ExtendsKeyword || 
+                token() === SyntaxKind.DerivesKeyword) {
 
                 return lookAhead(nextTokenIsStartOfExpression);
             }
@@ -2538,12 +2540,12 @@ namespace ts {
                 case ParsingContext.SwitchClauseStatements:
                     return token() === SyntaxKind.CloseBraceToken || token() === SyntaxKind.CaseKeyword || token() === SyntaxKind.DefaultKeyword;
                 case ParsingContext.HeritageClauseElement:
-                    return token() === SyntaxKind.OpenBraceToken || token() === SyntaxKind.ExtendsKeyword || token() === SyntaxKind.ImplementsKeyword;
+                    return token() === SyntaxKind.OpenBraceToken || token() === SyntaxKind.ExtendsKeyword || token() === SyntaxKind.ImplementsKeyword || token() == SyntaxKind.DerivesKeyword;
                 case ParsingContext.VariableDeclarations:
                     return isVariableDeclaratorListTerminator();
                 case ParsingContext.TypeParameters:
                     // Tokens other than '>' are here for better error recovery
-                    return token() === SyntaxKind.GreaterThanToken || token() === SyntaxKind.OpenParenToken || token() === SyntaxKind.OpenBraceToken || token() === SyntaxKind.ExtendsKeyword || token() === SyntaxKind.ImplementsKeyword;
+                    return token() === SyntaxKind.GreaterThanToken || token() === SyntaxKind.OpenParenToken || token() === SyntaxKind.OpenBraceToken || token() === SyntaxKind.ExtendsKeyword || token() === SyntaxKind.ImplementsKeyword || token() == SyntaxKind.DerivesKeyword;
                 case ParsingContext.ArgumentExpressions:
                     // Tokens other than ')' are here for better error recovery
                     return token() === SyntaxKind.CloseParenToken || token() === SyntaxKind.SemicolonToken;
@@ -7134,6 +7136,11 @@ namespace ts {
             const savedAwaitContext = inAwaitContext();
 
             const modifierFlags = modifiersToFlags(modifiers);
+
+            if(modifierFlags & ModifierFlags.Macro) {
+                addMetaprogramSourceFile(fileName);
+            }
+
             parseExpected(SyntaxKind.FunctionKeyword);
             const asteriskToken = parseOptionalToken(SyntaxKind.AsteriskToken);
             // We don't parse the name here in await context, instead we will report a grammar error in the checker.
@@ -7148,7 +7155,13 @@ namespace ts {
             setAwaitContext(savedAwaitContext);
             const node = factory.createFunctionDeclaration(modifiers, asteriskToken, name, typeParameters, parameters, type, body);
             (node as Mutable<FunctionDeclaration>).illegalDecorators = decorators;
-            return withJSDoc(finishNode(node, pos), hasJSDoc);
+            const decl = withJSDoc(finishNode(node, pos), hasJSDoc);
+            
+            if(isMacroDeclarationNode(decl)) {
+                tryBindDeriveMacroNode(decl);
+            }
+
+            return decl;
         }
 
         function parseConstructorName() {
@@ -7580,7 +7593,7 @@ namespace ts {
         function parseHeritageClause(): HeritageClause {
             const pos = getNodePos();
             const tok = token();
-            Debug.assert(tok === SyntaxKind.ExtendsKeyword || tok === SyntaxKind.ImplementsKeyword); // isListElement() should ensure this.
+            Debug.assert(tok === SyntaxKind.ExtendsKeyword || tok === SyntaxKind.ImplementsKeyword || tok === SyntaxKind.DerivesKeyword); // isListElement() should ensure this.
             nextToken();
             const types = parseDelimitedList(ParsingContext.HeritageClauseElement, parseExpressionWithTypeArguments);
             return finishNode(factory.createHeritageClause(tok, types), pos);
@@ -7602,7 +7615,7 @@ namespace ts {
         }
 
         function isHeritageClause(): boolean {
-            return token() === SyntaxKind.ExtendsKeyword || token() === SyntaxKind.ImplementsKeyword;
+            return token() === SyntaxKind.ExtendsKeyword || token() === SyntaxKind.ImplementsKeyword || token() == SyntaxKind.DerivesKeyword;
         }
 
         function parseClassMembers(): NodeArray<ClassElement> {

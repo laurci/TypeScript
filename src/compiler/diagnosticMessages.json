@@ -1574,11 +1574,51 @@
         "category": "Error",
         "code": 1805
     },
-    
+    "Macro declaration is missing context parameter type.": {
+        "category": "Error",
+        "code": 1806
+    },
+    "Macro declaration has '{0}' context and can't be invoked as a '{1}' macro.": {
+        "category": "Error",
+        "code": 1807
+    },
+    "Check error: {0}": {
+        "category": "Error",
+        "code": 1808
+    },
+    "Check suggestion: {0}": {
+        "category": "Suggestion",
+        "code": 1809
+    },
+    "Check message: {0}": {
+        "category": "Message",
+        "code": 1810
+    },
+    "Derives clause already seen": {
+        "category": "Error",
+        "code": 1811
+    },
+    "Derives clause must be used with indetifiers": {
+        "category": "Error",
+        "code": 1812
+    },
+    "Derived interface '{0}' is not implemented by any macro": {
+        "category": "Error",
+        "code": 1813
+    },
+    "Derived elements must be interfaces": {
+        "category": "Error",
+        "code": 1814
+    },
+    "Interface declaration cannot have derives clause": {
+        "category": "Error",
+        "code": 1815
+    },
     "Expected list of comma separated identifiers": {
         "category": "Error",
         "code": 1806
     },
+
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",
         "code": 2200
@@ -1872,14 +1912,6 @@
     "The right-hand side of an 'instanceof' expression must be of type 'any' or of a type assignable to the 'Function' interface type.": {
         "category": "Error",
         "code": 2359
-    },
-    "The left-hand side of an 'in' expression must be a private identifier or of type 'any', 'string', 'number', or 'symbol'.": {
-        "category": "Error",
-        "code": 2360
-    },
-    "The right-hand side of an 'in' expression must not be a primitive.": {
-        "category": "Error",
-        "code": 2361
     },
     "The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.": {
         "category": "Error",
@@ -2874,6 +2906,10 @@
         "category": "Error",
         "code": 2637
     },
+    "Type '{0}' may represent a primitive value, which is not permitted as the right operand of the 'in' operator.": {
+        "category": "Error",
+        "code": 2638
+    },
 
     "Cannot augment module '{0}' with value exports because it resolves to a non-module entity.": {
         "category": "Error",
@@ -3595,6 +3631,10 @@
     "Type of instance member variable '{0}' cannot reference identifier '{1}' declared in the constructor.": {
         "category": "Error",
         "code": 2844
+    },
+    "This condition will always return '{0}'.": {
+        "category": "Error",
+        "code": 2845
     },
 
     "Import declaration '{0}' is using private name '{1}'.": {
@@ -7389,7 +7429,14 @@
         "category": "Message",
         "code": 95173
     },
-
+    "Use `{0}`.": {
+        "category": "Message",
+        "code": 95174
+    },
+    "Use `Number.isNaN` in all conditions.": {
+        "category": "Message",
+        "code": 95175
+    },
 
     "No value exists in scope for the shorthand property '{0}'. Either declare one or provide an initializer.": {
         "category": "Error",

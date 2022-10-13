@@ -3505,6 +3505,7 @@ namespace ts {
         }
 
         function emitExportDeclaration(node: ExportDeclaration) {
+            emitModifiers(node, node.modifiers);
             let nextPos = emitTokenWithComment(SyntaxKind.ExportKeyword, node.pos, writeKeyword, node);
             writeSpace();
             if (node.isTypeOnly) {
@@ -3762,6 +3763,11 @@ namespace ts {
         }
 
         function emitHeritageClause(node: HeritageClause) {
+            // Don't emit derives
+            if(node.token === SyntaxKind.DerivesKeyword) {
+                return;
+            }
+
             writeSpace();
             writeTokenText(node.token, writeKeyword);
             writeSpace();

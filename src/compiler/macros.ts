@@ -1,176 +1,151 @@
 namespace ts {
-
-    export const RuntimeValue = {
-        string: "",
-        number: 0,
-        boolean: false,
-        symbol: Symbol(),
-        object: {},
-        promise: new Promise<any>(() => {})
-    };
+    export function isCompilerModuleSpecifier(node: Expression): node is StringLiteral {
+        return isStringLiteral(node) && node.text === "compiler";
+    }
 
     export type MacroDeclarationNode = Omit<FunctionDeclaration | FunctionExpression, "name"> & { name: Identifier };
-
-    export function isMacroDeclarationNode(node: Node): node is MacroDeclarationNode {
-        return (isFunctionDeclaration(node) || isFunctionExpression(node)) && !!node.name && isIdentifier(node.name) && hasSyntacticModifier(node, ModifierFlags.Macro);
-    }
 
     export type MacroCallExpressionNode = Omit<CallExpression, "expression"> & {
         expression: Omit<NonNullExpression, "expression"> & {expression: Identifier}
     };
 
+    export type MacroTaggedTemplateExpressionNode = Omit<TaggedTemplateExpression, "tag"> & { tag: Omit<NonNullExpression, "expression"> & {expression: Identifier} };
+
+    export function isMacroDeclarationNode(node: Node): node is MacroDeclarationNode {
+        return (isFunctionDeclaration(node) || isFunctionExpression(node)) && !!node.name && isIdentifier(node.name) && hasSyntacticModifier(node, ModifierFlags.Macro);
+    }
+
     export function isMacroCallExpressionNode(node: Node): node is MacroCallExpressionNode {
         return isCallExpression(node) && isNonNullExpression(node.expression) && isIdentifier(node.expression.expression);
     }
 
-    export function isCompilerModuleSpecifier(node: Expression): node is StringLiteral {
-        return isStringLiteral(node) && node.text === "compiler";
+    export function isMacroTaggedTemplateExpressionNode(node: Node): node is MacroTaggedTemplateExpressionNode {
+        return isTaggedTemplateExpression(node) && isNonNullExpression(node.tag) && isIdentifier(node.tag.expression);
     }
 
-    export interface MacroResult {
-        kind: "replace" | "append" | "prepend" | "remove" | "appendAll" | "prependAll";
+    export type MacroDeclarationType = "function" | "taggedTemplate" | "derive";
+    interface MacroDeclaration<TType extends MacroDeclarationType = MacroDeclarationType, TNode extends Node = Node> {
+        type: TType;
+        node: TNode;
+    };
+
+    type MacroDeclarationsMapper<T extends {
+        [key in MacroDeclarationType]: MacroDeclaration<key, Node>
+    }> = T;
+
+    type MacroNodesMapper<T extends {
+        [key in MacroDeclarationType]: Node
+    }> = T;
+
+    type FunctionMacroDeclaration = MacroDeclaration<"function", MacroDeclarationNode>;
+    type TaggedTemplateMacroDeclaration = MacroDeclaration<"taggedTemplate", MacroDeclarationNode>;
+    type DeriveMacroDeclaration = MacroDeclaration<"derive", MacroDeclarationNode>;
+
+    type MacroDeclarationsMap = MacroDeclarationsMapper<{
+        function: FunctionMacroDeclaration;
+        taggedTemplate: TaggedTemplateMacroDeclaration;
+        derive: DeriveMacroDeclaration;
+    }>;
+
+    type MacroNodesMap = MacroNodesMapper<{
+        function: MacroCallExpressionNode;
+        taggedTemplate: MacroTaggedTemplateExpressionNode;
+        derive: ClassDeclaration;
+    }>;
+
+
+    export function isMacroDeclarationOfType<T extends MacroDeclarationType>(type: T, declaration: MacroDeclaration): declaration is MacroDeclarationsMap[T] {
+        return declaration.type === type;
     }
 
-    export interface MacroReplaceResult extends MacroResult {
-        kind: "replace";
-        node: Node;
+    export interface MacroHooks<TNode extends Node> {
+        transform: TransformApiFunction<TNode>[];
+        check: CheckApiFunction<TNode>[];
     }
 
-    export function isMacroReplaceResult(result: MacroResult): result is MacroReplaceResult {
-        return result.kind === "replace";
-    }
-
-    export interface MacroAppendResult extends MacroResult {
-        kind: "append";
-        node: Node;
-    }
-
-    export function isMAcroAppendResult(result: MacroResult): result is MacroAppendResult {
-        return result.kind === "append";
-    }
-
-    export interface MacroPrependResult extends MacroResult {
-        kind: "prepend";
-        node: Node;
-    }
-
-    export function isMacroPrependResult(result: MacroResult): result is MacroPrependResult {
-        return result.kind === "prepend";
-    }
-
-    export interface MacroRemoveResult extends MacroResult {
-        kind: "remove";
-    }
-
-    export function isMacroRemoveResult(result: MacroResult): result is MacroRemoveResult {
-        return result.kind === "remove";
-    }
-
-    export interface MacroAppendAllResult extends MacroResult {
-        kind: "appendAll";
-        node: Node;
-    }
-
-    export function isMacroAppendAllResult(result: MacroResult): result is MacroAppendAllResult {
-        return result.kind === "appendAll";
-    }
-
-    export interface MacroPrependAllResult extends MacroResult {
-        kind: "prependAll";
-        node: Node;
-    }
-
-    export function isMacroPrependAllResult(result: MacroResult): result is MacroPrependAllResult {
-        return result.kind === "prependAll";
-    }
-
-    export class MacroResults {
-        private list: MacroResult[] = [];
-
-        public static toList(results: MacroResults) {
-            return results.list;
-        }
-
-        private static replacementNode(newNode: Node, oldNode: Node) {
-            return {
-                ...newNode,
-                parent: oldNode.parent
-            };
-        }
-
-        public static toReplacement(node: Node, results: MacroResults): Node | undefined {
-            const result = MacroResults.toList(results);
-            const remove = result.some(isMacroRemoveResult);
-            if(remove) return factory.createVoidZero();
-
-            const replace = result.find(x => isMacroReplaceResult(x)) as MacroReplaceResult;
-            if(replace) {
-                return this.replacementNode(replace.node, node);
-            }
-
-            return node;
-        }
-
-        replace(node: Node) {
-            this.list.push({ kind: "replace", node } as MacroReplaceResult);
-        }
-
-        append(node: Node) {
-            this.list.push({ kind: "append", node } as MacroAppendResult);
-        }
-
-        prepend(node: Node) {
-            this.list.push({ kind: "prepend", node } as MacroPrependResult);
-        }
-
-        remove() {
-            this.list.push({ kind: "remove" } as MacroRemoveResult);
-        }
-
-        appendAll(node: Node) {
-            this.list.push({ kind: "appendAll", node } as MacroAppendAllResult);
-        }
-
-        prependAll(node: Node) {
-            this.list.push({ kind: "prependAll", node } as MacroPrependAllResult);
-        }
-    }
-
-    export function createBaseMacroContext(sourceFile: SourceFile, context: TransformationContext): BaseMacroContext {
+    function createEmptyHooks<TNode extends Node>(): MacroHooks<TNode> {
         return {
-            factory: context.factory,
-            sourceFile,
-            context,
-            result: new MacroResults(),
+            transform: [],
+            check: []
         };
     }
 
-    export interface BaseMacroContext {
-        readonly factory: NodeFactory;
-        readonly context: TransformationContext;
-        readonly sourceFile: SourceFile;
-        readonly result: MacroResults;
+    export interface BaseMacro {
+    }
+
+    interface MacroWithDeclaration<T extends MacroDeclaration> {
+        declaration: T
     };
 
-    export interface CallExpressionMacroContext extends BaseMacroContext {
-        readonly node: MacroCallExpressionNode;
-    };
+    export interface FunctionMacro extends BaseMacro, MacroWithDeclaration<FunctionMacroDeclaration>, MacroWithTransformApi<MacroCallExpressionNode>, MacroWithCheckApi<MacroCallExpressionNode> {
 
-    export type MacroFunction<T extends BaseMacroContext = BaseMacroContext> = (this: T, ...args: any[]) => void;
+    }
 
-    const macroBindings = new Map<Node, MacroDeclarationNode>();
+    export interface TaggedTemplateMacro extends BaseMacro, MacroWithDeclaration<TaggedTemplateMacroDeclaration>, MacroWithTransformApi<MacroTaggedTemplateExpressionNode>, MacroWithCheckApi<MacroTaggedTemplateExpressionNode> {
+
+    }
+
+    export interface DeriveMacro<_T> extends BaseMacro, MacroWithDeclaration<DeriveMacroDeclaration>, MacroWithTransformApi<ClassDeclaration>, MacroWithCheckApi<ClassDeclaration> {
+
+    }
+
+    export type MacroExecutor<T extends BaseMacro = BaseMacro> = (this: T, ...args: any[]) => void;
+
+    const macroBindings = new Map<Node, MacroDeclaration>();
+    const deriveMacros = new Map<string, DeriveMacroDeclaration>();
+    const macroHooks = new Map<MacroDeclaration, MacroHooks<Node>>();
     const metaprogramSources = new Set<string>();
 
-    export function bindMacro(node: Node, declaration: MacroDeclarationNode) {
-        macroBindings.set(node, declaration);
+    export function bindMacro<TType extends MacroDeclarationType>(macroType: TType, declarationNode: MacroDeclarationsMap[TType]["node"], node: MacroNodesMap[TType]) {
+        macroBindings.set(node, {
+            node: declarationNode,
+            type: macroType
+        });
     }
 
-    export function getMacroBinding(node: Node): MacroDeclarationNode | undefined {
-        return macroBindings.get(node);
+    export function getMacroBinding<TType extends MacroDeclarationType>(_type: TType, node: MacroNodesMap[TType]): MacroDeclarationsMap[TType] | undefined {
+        return macroBindings.get(node) as MacroDeclarationsMap[TType];
     }
 
-    export function getMacroDeclarations(): MacroDeclarationNode[] {
-        const macros: MacroDeclarationNode[] = [];
+    export function tryBindDeriveMacroNode(declaration: MacroDeclarationNode) {
+        const thisParameter = getThisParameter(declaration as FunctionDeclaration);
+        if(thisParameter && thisParameter.type && isTypeReferenceNode(thisParameter.type)) {
+            if(isIdentifier(thisParameter.type.typeName) && thisParameter.type.typeName.escapedText === "DeriveMacro") {
+                const firstTypeArgument = thisParameter.type.typeArguments?.[0];
+                if(firstTypeArgument && isTypeReferenceNode(firstTypeArgument) && isIdentifier(firstTypeArgument.typeName)) {
+                    if(!deriveMacros.has(firstTypeArgument.typeName.escapedText.toString())) {
+                        deriveMacros.set(firstTypeArgument.typeName.escapedText.toString(), {
+                            type: "derive",
+                            node: declaration
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    export function getDeriveMacros(node: ClassDeclaration): DeriveMacroDeclaration[] {
+        const declarations: DeriveMacroDeclaration[] = [];
+
+        const derivesElements = getClassDerivesHeritageElements(node);
+        for(let derivesElement of derivesElements) {
+            if(isIdentifier(derivesElement.expression)) {
+                const declaration = deriveMacros.get(derivesElement.expression.escapedText.toString());
+                if(declaration) {
+                    declarations.push(declaration);
+                }
+            }
+        }
+
+        return declarations;
+    }
+
+    export function getDeriveMacrosMap() {
+        return deriveMacros;
+    }
+
+    export function getMacroDeclarations(): MacroDeclaration[] {
+        const macros: MacroDeclaration[] = [];
         macroBindings.forEach((macro) => macros.push(macro));
         return macros;
     }
@@ -185,17 +160,17 @@ namespace ts {
         return sourceFiles;
     }
 
-    export function executeCallExpressionMacro(context: TransformationContext, node: MacroCallExpressionNode, declaration: MacroDeclarationNode): Node | undefined {
-        const macroContext: CallExpressionMacroContext = {
-            ...createBaseMacroContext(getSourceFileOfNode(node), context),
-            node
-        };
+    export function getHooksForMacro<T extends MacroDeclarationType, TMacro extends BaseMacro>(declaration: MacroDeclarationsMap[T], contextProvider: (hooks: MacroHooks<MacroNodesMap[T]>) => TMacro): MacroHooks<MacroNodesMap[T]> {
+        if(macroHooks.has(declaration)) return macroHooks.get(declaration) as MacroHooks<MacroNodesMap[T]>;
 
-        const macro = loadMacro<CallExpressionMacroContext>(declaration);
+        const executor = loadMacro<TMacro>(declaration.node);
 
-        macro.apply(macroContext);
+        const hooks = createEmptyHooks<MacroNodesMap[T]>();
+        const macroContext: TMacro = contextProvider(hooks);
 
-        return MacroResults.toReplacement(node, macroContext.result);
+        executor.call(macroContext);
+
+        macroHooks.set(declaration, hooks);
+        return hooks;
     }
-
 }

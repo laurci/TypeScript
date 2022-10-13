@@ -563,7 +563,7 @@ namespace ts {
 
     interface ScriptTargetFeatures {
         [key: string]: { [key: string]: string[] | undefined };
-    };
+    }
 
     export function getScriptTargetFeatures(): ScriptTargetFeatures {
         return {
@@ -3217,6 +3217,11 @@ namespace ts {
         return heritageClause && heritageClause.types.length > 0 ? heritageClause.types[0] : undefined;
     }
 
+    export function getClassDerivesHeritageElements(node: ClassLikeDeclaration) {
+        const heritageClause = getHeritageClause(node.heritageClauses, SyntaxKind.DerivesKeyword);
+        return heritageClause?.types ?? [];
+    }
+
     export function getEffectiveImplementsTypeNodes(node: ClassLikeDeclaration): undefined | readonly ExpressionWithTypeArguments[]{
         if (isInJSFile(node)) {
             return getJSDocImplementsTags(node).map(n => n.class);
@@ -4457,6 +4462,9 @@ namespace ts {
     /** Don't call this for `--outFile`, just for `--outDir` or plain emit. `--outFile` needs additional checks. */
     export function sourceFileMayBeEmitted(sourceFile: SourceFile, host: SourceFileMayBeEmittedHost, forceDtsEmit?: boolean) {
         const options = host.getCompilerOptions();
+
+        if(!options.metaprogram && getMetaprogramSourceFiles().indexOf(sourceFile.path) >= 0) return false;
+
         return !(options.noEmitForJsFiles && isSourceFileJS(sourceFile)) &&
             !sourceFile.isDeclarationFile &&
             !host.isSourceFileFromExternalLibrary(sourceFile) &&
@@ -5559,7 +5567,7 @@ namespace ts {
 
     export function isWatchSet(options: CompilerOptions) {
         // Firefox has Object.prototype.watch
-        return options.watch && options.hasOwnProperty("watch");
+        return options.watch && hasProperty(options, "watch");
     }
 
     export function closeFileWatcher(watcher: FileWatcher) {

@@ -8,37 +8,31 @@ namespace ts {
         Pirates.addHook((code, filename) => {
             return compileModule(code, filename);
         }, {
-            extensions: [".ts"],
+            extensions: [".ts", ".tsx"],
             ignoreNodeModules: true,
         });
     })();
 
     let metaProgram: Program | undefined;
+
     function getMetaProgram() {
         if(!!metaProgram) return metaProgram;
 
         console.time("create metaprogram");
-
-        const declarations = getMacroDeclarations();
-        const sourceFileNameSet = new Set<string>();
-        for (const declaration of declarations) {
-            const sourceFile = getSourceFileOfNode(declaration);
-            sourceFileNameSet.add(sourceFile.fileName);
-        }
-        const sourceFileNames: string[] = [];
-        sourceFileNameSet.forEach((fileName) => sourceFileNames.push(fileName));
 
         const compilerOptions: CompilerOptions = {
             metaprogram: true,
             target: ScriptTarget.ES5,
             module: ModuleKind.CommonJS,
             skipLibCheck: true,
+            skipDefaultLibCheck: true,
             declaration: false,
+            jsx: JsxEmit.Preserve,
             strict: true
         };
 
         metaProgram = createProgram({
-            rootNames: sourceFileNames,
+            rootNames: getMetaprogramSourceFiles(),
             options: compilerOptions
         });
 
@@ -94,7 +88,7 @@ namespace ts {
     }
 
     const moduleCache = new Map<string, any>();
-    const macroCache = new Map<MacroDeclarationNode, MacroFunction>();
+    const macroCache = new Map<MacroDeclarationNode, MacroExecutor>();
 
     function compileModule(_text: string, path: string) {
         const text = emitSourceFile(path);
@@ -110,8 +104,8 @@ namespace ts {
         return mod;
     }
 
-    export function loadMacro<T extends BaseMacroContext = BaseMacroContext>(declaration: MacroDeclarationNode): MacroFunction<T> {
-        if(macroCache.has(declaration)) return macroCache.get(declaration) as MacroFunction<T>;
+    export function loadMacro<T extends BaseMacro = BaseMacro>(declaration: MacroDeclarationNode): MacroExecutor<T> {
+        if(macroCache.has(declaration)) return macroCache.get(declaration) as MacroExecutor<T>;
 
         const sourceFile = getSourceFileOfNode(declaration);
         const path = sourceFile.fileName;
