@@ -1,4 +1,11 @@
 namespace ts {
+    export function getCurrentProgram(): Program {
+        const program = (globalThis as any).__ts_program;
+        if(!program) throw new Error("Could not get current program!");
+        
+        return program;
+    }
+
     export function isExternalModuleNameRelative(moduleName: string): boolean {
         // TypeScript 1.0 spec (April 2014): 11.2.1
         // An external module name is "relative" if the first term is "." or "..".
@@ -1223,6 +1230,7 @@ namespace ts {
             case SyntaxKind.AbstractKeyword:
             case SyntaxKind.AccessorKeyword:
             case SyntaxKind.AsyncKeyword:
+            case SyntaxKind.MacroKeyword:
             case SyntaxKind.ConstKeyword:
             case SyntaxKind.DeclareKeyword:
             case SyntaxKind.DefaultKeyword:

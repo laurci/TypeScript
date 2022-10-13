@@ -8,6 +8,7 @@ import del from "del";
 import rename from "gulp-rename";
 import concat from "gulp-concat";
 import merge2 from "merge2";
+import through from "through2";
 import gulp from "gulp";
 import { append, transform } from "gulp-insert";
 import { prependFile } from "./scripts/build/prepend.mjs";
@@ -17,6 +18,7 @@ import { buildProject, cleanProject, watchProject } from "./scripts/build/projec
 import cmdLineOptions from "./scripts/build/options.mjs";
 
 const { src, dest, task, parallel, series, watch } = gulp;
+
 
 const copyright = "CopyrightNotice.txt";
 const cleanTasks = [];
@@ -42,8 +44,34 @@ const generateLibs = () => {
             .pipe(concat(relativeTarget, { newLine: "\n\n" }))
             .pipe(dest("built/local"))));
 };
+
 task("lib", generateLibs);
 task("lib").description = "Builds the library targets";
+
+const generateCompilerLib = () => {
+    return src("built/local/typescript.d.ts")
+            .pipe(through.obj((file, enc, cb) => {
+                const transformedFile = file.clone();
+
+                const text = transformedFile.contents.toString();
+                transformedFile.contents = Buffer.from(
+                    text
+                        .replace(/declare/g, "")
+                        .replace("namespace ts", "declare module \"compiler\" {\nnamespace ts")
+                        .replace("export = ts;", "export = ts;\n}")
+                );
+
+                // eslint-disable-next-line
+                cb(null, transformedFile);
+            }))
+            .pipe(rename("lib.compiler.d.ts"))
+            .pipe(dest("built/local/"));
+};
+
+const watchGenerateCompilerLib = () => watch("built/local/typescript.d.ts", generateCompilerLib);
+
+task("generate-compiler-lib", generateCompilerLib);
+task("watch-generate-compiler-lib", watchGenerateCompilerLib);
 
 const cleanLib = () => del(libs.map(lib => lib.target));
 cleanTasks.push(cleanLib);
@@ -235,7 +263,7 @@ task("watch-tsserver").flags = {
     "   --built": "Compile using the built version of the compiler."
 };
 
-task("min", series(preBuild, parallel(buildTsc, buildServer)));
+task("min", series(preBuild, series(parallel(buildTsc, buildServer), generateCompilerLib)));
 task("min").description = "Builds only tsc and tsserver";
 task("min").flags = {
     "   --built": "Compile using the built version of the compiler."
@@ -244,7 +272,7 @@ task("min").flags = {
 task("clean-min", series(cleanTsc, cleanServer));
 task("clean-min").description = "Cleans outputs for tsc and tsserver";
 
-task("watch-min", series(preBuild, parallel(watchLib, watchDiagnostics, watchTsc, watchServer)));
+task("watch-min", series(preBuild, parallel(watchLib, watchGenerateCompilerLib, watchDiagnostics, watchTsc, watchServer)));
 task("watch-min").description = "Watches for changes to a tsc and tsserver only";
 task("watch-min").flags = {
     "   --built": "Compile using the built version of the compiler."
@@ -399,13 +427,13 @@ const buildOtherOutputs = parallel(buildCancellationToken, buildTypingsInstaller
 task("other-outputs", series(preBuild, buildOtherOutputs));
 task("other-outputs").description = "Builds miscelaneous scripts and documents distributed with the LKG";
 
-task("local", series(preBuild, parallel(localize, buildTsc, buildServer, buildServices, buildLssl, buildOtherOutputs)));
+task("local", series(preBuild, series(parallel(localize, buildTsc, buildServer, buildServices, buildLssl, buildOtherOutputs), generateCompilerLib)));
 task("local").description = "Builds the full compiler and services";
 task("local").flags = {
     "   --built": "Compile using the built version of the compiler."
 };
 
-task("watch-local", series(preBuild, parallel(watchLib, watchDiagnostics, watchTsc, watchServices, watchServer, watchLssl)));
+task("watch-local", series(preBuild, parallel(watchLib, watchGenerateCompilerLib, watchDiagnostics, watchTsc, watchServices, watchServer, watchLssl)));
 task("watch-local").description = "Watches for changes to projects in src/ (but does not execute tests).";
 task("watch-local").flags = {
     "   --built": "Compile using the built version of the compiler."

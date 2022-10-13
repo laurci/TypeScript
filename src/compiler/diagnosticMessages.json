@@ -1550,6 +1550,71 @@
         "code": 1483
     },
 
+    "Defer statements can only be used within a function body": {
+        "category": "Error",
+        "code": 1800
+    },
+    "Macro functions must be named": {
+        "category": "Error",
+        "code": 1801
+    },
+    "Macro keyword is only allowed on function expressions or function declarations": {
+        "category": "Error",
+        "code": 1802
+    },
+    "Macro functions must not be async": {
+        "category": "Error",
+        "code": 1803
+    },
+    "Macros can't be used in the same file they are defined in": {
+        "category": "Error",
+        "code": 1804
+    },
+    "Macros must be invoked with the '!' operator": {
+        "category": "Error",
+        "code": 1805
+    },
+    "Macro declaration is missing context parameter type.": {
+        "category": "Error",
+        "code": 1806
+    },
+    "Macro declaration has '{0}' context and can't be invoked as a '{1}' macro.": {
+        "category": "Error",
+        "code": 1807
+    },
+    "Check error: {0}": {
+        "category": "Error",
+        "code": 1808
+    },
+    "Check suggestion: {0}": {
+        "category": "Suggestion",
+        "code": 1809
+    },
+    "Check message: {0}": {
+        "category": "Message",
+        "code": 1810
+    },
+    "Derives clause already seen": {
+        "category": "Error",
+        "code": 1811
+    },
+    "Derives clause must be used with indetifiers": {
+        "category": "Error",
+        "code": 1812
+    },
+    "Derived interface '{0}' is not implemented by any macro": {
+        "category": "Error",
+        "code": 1813
+    },
+    "Derived elements must be interfaces": {
+        "category": "Error",
+        "code": 1814
+    },
+    "Interface declaration cannot have derives clause": {
+        "category": "Error",
+        "code": 1815
+    },
+
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",
         "code": 2200

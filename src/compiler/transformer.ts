@@ -1,4 +1,3 @@
-/* @internal */
 namespace ts {
     function getModuleTransformer(moduleKind: ModuleKind): TransformerFactory<SourceFile | Bundle> {
         switch (moduleKind) {
@@ -46,6 +45,9 @@ namespace ts {
         const transformers: TransformerFactory<SourceFile | Bundle>[] = [];
 
         addRange(transformers, customTransformers && map(customTransformers.before, wrapScriptTransformerFactory));
+
+        transformers.push(transformMetaprogramReferences);
+        transformers.push(transformDeferStatements);
 
         transformers.push(transformTypeScript);
         transformers.push(transformLegacyDecorators);

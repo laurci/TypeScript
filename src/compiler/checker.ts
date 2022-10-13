@@ -395,6 +395,7 @@ namespace ts {
         // extra cost of calling `getParseTreeNode` when calling these functions from inside the
         // checker.
         const checker: TypeChecker = {
+            getProgram: () => host as any as Program,
             getNodeCount: () => sum(host.getSourceFiles(), "nodeCount"),
             getIdentifierCount: () => sum(host.getSourceFiles(), "identifierCount"),
             getSymbolCount: () => sum(host.getSourceFiles(), "symbolCount") + symbolCount,
@@ -9797,6 +9798,11 @@ namespace ts {
             // Handle catch clause variables
             Debug.assertIsDefined(symbol.valueDeclaration);
             const declaration = symbol.valueDeclaration;
+
+            if(isVariableDeclaration(declaration) && declaration.initializer && isMacroCallExpressionNode(declaration.initializer)) {
+                return checkCallExpression(declaration.initializer);
+            }
+
             if (isCatchClauseVariableDeclarationOrBindingElement(declaration)) {
                 const typeNode = getEffectiveTypeAnnotationNode(declaration);
                 if (typeNode === undefined) {
@@ -11153,6 +11159,20 @@ namespace ts {
                         }
                     }
                 }
+
+                const classDeclaration = getClassLikeDeclarationOfSymbol(symbol);
+                if(classDeclaration) {
+                    const deriveTypes = getClassDerivesHeritageElements(classDeclaration).map(node => getTypeFromTypeNode(node));
+                    for(const deriveType of deriveTypes) {
+                        const members = getMembersOfSymbol(deriveType.symbol);
+
+                        members.forEach((symbol, key) => {
+                            links[resolutionKind]?.set(key, symbol);
+                        });
+                    }
+                }
+
+
                 const assignments = symbol.assignmentDeclarationMembers;
                 if (assignments) {
                     const decls = arrayFrom(assignments.values());
@@ -30833,7 +30853,7 @@ namespace ts {
                 return undefined;
             }
             const thisType = getThisTypeOfSignature(signature);
-            if (thisType && thisType !== voidType && node.kind !== SyntaxKind.NewExpression) {
+            if (thisType && thisType !== voidType && node.kind !== SyntaxKind.NewExpression && !isMacroCallExpressionNode(node) && !isMacroTaggedTemplateExpressionNode(node)) {
                 // If the called expression is not of the form `x.f` or `x["f"]`, then sourceType = voidType
                 // If the signature's 'this' type is voidType, then the check is skipped -- anything is compatible.
                 // If the expression is a new expression, then the check is skipped.
@@ -31256,6 +31276,29 @@ namespace ts {
                 result = chooseOverload(candidates, assignableRelation, isSingleNonGenericCandidate, signatureHelpTrailingComma);
             }
             if (result) {
+                if(isMacroCallExpressionNode(node)) {
+                    if(result.declaration && isMacroDeclarationNode(result.declaration)) {
+                        bindMacro("function", result.declaration, node);
+                    }
+
+                    const alternateReturnTypeDefinition = checkFunctionMacro(node, checker, reportCheckApiDiagnostic(node));
+                    if(alternateReturnTypeDefinition) {
+                        const returnType = getTypeFromTypeDefinition(node, alternateReturnTypeDefinition);
+                        result.resolvedReturnType = returnType;
+                    }
+                }
+
+                if(isMacroTaggedTemplateExpressionNode(node)) {
+                    if(result.declaration && isMacroDeclarationNode(result.declaration)) {
+                        bindMacro("taggedTemplate", result.declaration, node);
+                    }
+
+                    const alternateReturnTypeDefinition = checkTaggedTemplateExpressionMacro(node, checker, reportCheckApiDiagnostic(node));
+                    if(alternateReturnTypeDefinition) {
+                        const returnType = getTypeFromTypeDefinition(node, alternateReturnTypeDefinition);
+                        result.resolvedReturnType = returnType;
+                    }
+                }
                 return result;
             }
 
@@ -32317,6 +32360,66 @@ namespace ts {
             }
         }
 
+        function capitalize(str: string) {
+            return str[0].toUpperCase() + str.slice(1);
+        }
+
+        function checkMatchingMacroDeclaration<T extends MacroDeclarationType>(type: T, declarationNode: MacroDeclarationNode, node: Node) {
+            const thisParameterNode = declarationNode.parameters.find(x => isIdentifier(x.name) && x.name.escapedText === "this");
+            const thisTypeNode = thisParameterNode?.type;
+
+            if(!thisTypeNode || !isTypeReferenceNode(thisTypeNode) || !isIdentifier(thisTypeNode.typeName)) {
+                error(node, Diagnostics.Macro_declaration_is_missing_context_parameter_type);
+                return;
+            }
+
+            const macroTypeName = capitalize(type);
+            const expectedTypeName = capitalize(`${type}Macro`);
+
+            const typeName = thisTypeNode.typeName.escapedText.toString();
+
+            if(typeName !== expectedTypeName) {
+                error(node, Diagnostics.Macro_declaration_has_0_context_and_can_t_be_invoked_as_a_1_macro, typeName, macroTypeName);
+                return;
+            }
+        }
+
+        function checkGrammarMacroCallExpression(call: CallExpression, declaration: MacroDeclarationNode) {
+            if(!isMacroCallExpressionNode(call)) {
+                error(call, Diagnostics.Macros_must_be_invoked_with_the_operator);
+                return;
+            }
+
+            checkMatchingMacroDeclaration("function", declaration, call);
+
+            const callSourceFile = getSourceFileOfNode(call);
+            const declarationSourceFile = getSourceFileOfNode(declaration);
+            if(callSourceFile.fileName === declarationSourceFile.fileName) {
+                error(call, Diagnostics.Macros_can_t_be_used_in_the_same_file_they_are_defined_in);
+                return;
+            }
+
+            // bindMacro("function", declaration, call);
+        }
+
+        function checkGrammarMacroTaggedTemplateExpression(expr: TaggedTemplateExpression, declaration: MacroDeclarationNode) {
+            if(!isMacroTaggedTemplateExpressionNode(expr)) {
+                error(expr, Diagnostics.Macros_must_be_invoked_with_the_operator);
+                return;
+            }
+
+            checkMatchingMacroDeclaration("taggedTemplate", declaration, expr);
+
+            const callSourceFile = getSourceFileOfNode(expr);
+            const declarationSourceFile = getSourceFileOfNode(declaration);
+            if(callSourceFile.fileName === declarationSourceFile.fileName) {
+                error(expr, Diagnostics.Macros_can_t_be_used_in_the_same_file_they_are_defined_in);
+                return;
+            }
+
+            // bindMacro("taggedTemplate", declaration, expr);
+        }
+
         /**
          * Syntactically and semantically checks a call or new expression.
          * @param node The call/new expression to be checked.
@@ -32326,6 +32429,7 @@ namespace ts {
             checkGrammarTypeArguments(node, node.typeArguments);
 
             const signature = getResolvedSignature(node, /*candidatesOutArray*/ undefined, checkMode);
+
             if (signature === resolvingSignature) {
                 // CheckMode.SkipGenericFunctions is enabled and this is a call to a generic function that
                 // returns a function type. We defer checking and return silentNeverType.
@@ -32359,6 +32463,19 @@ namespace ts {
             // In JavaScript files, calls to any identifier 'require' are treated as external module imports
             if (isInJSFile(node) && isCommonJsRequire(node)) {
                 return resolveExternalModuleTypeByLiteral(node.arguments![0] as StringLiteral);
+            }
+
+            if(isMacroCallExpressionNode(node)) {
+                if(signature.declaration && isMacroDeclarationNode(signature.declaration)) {
+                    checkGrammarMacroCallExpression(node, signature.declaration);
+                    bindMacro("function", signature.declaration, node);
+
+                    const alternateReturnTypeDefinition = checkFunctionMacro(node, checker, reportCheckApiDiagnostic(node));
+                    if(alternateReturnTypeDefinition) {
+                        const returnType = getTypeFromTypeDefinition(node, alternateReturnTypeDefinition);
+                        return returnType;
+                    }
+                }
             }
 
             const returnType = getReturnTypeOfSignature(signature);
@@ -32555,13 +32672,122 @@ namespace ts {
             return false;
         }
 
+
+        function reportCheckApiDiagnostic(node: Node) {
+            return (diagnostic: CheckApiDiagnostic) => {
+                if(diagnostic.type === "error") {
+                    error(diagnostic.node ?? node, Diagnostics.Check_error_Colon_0, diagnostic.message);
+                }
+                else if(diagnostic.type === "suggestion") {
+                    error(diagnostic.node ?? node, Diagnostics.Check_suggestion_Colon_0, diagnostic.message);
+                }
+                else if(diagnostic.type === "message") {
+                    error(diagnostic.node ?? node, Diagnostics.Check_message_Colon_0, diagnostic.message);
+                }
+            };
+        }
+
+        function getTypeFromIntrinsicTypeDefinition(typeDefinition: IntrinsicTypeDefinition): Type {
+            switch(typeDefinition.type) {
+                case IntrinsicTypes.String:
+                    return stringType;
+                case IntrinsicTypes.Number:
+                    return numberType;
+                case IntrinsicTypes.Boolean:
+                    return booleanType;
+                case IntrinsicTypes.Any:
+                    return anyType;
+                case IntrinsicTypes.Null:
+                    return nullType;
+                case IntrinsicTypes.Undefined:
+                    return undefinedType;
+                case IntrinsicTypes.Void:
+                    return voidType;
+                case IntrinsicTypes.Never:
+                    return neverType;
+                default:
+                    throw new Error("Unresolved intrinsic type kind");
+            }
+        }
+
+        function getParametersTextFromArity(arity: number) {
+            if(arity === 0) return "";
+            return `<${Array.from({ length: arity }).map((_v, index) => `T${index + 1}`).join(", ")}`;
+        }
+
+        function getTypeFromTypeDefinition(node: Node, typeDefinition: TypeDefinition): Type {
+            if(isResolvedTypeDefinition(typeDefinition)) {
+                return typeDefinition.type;
+            }
+
+            if(isIntrinsicTypeDefinition(typeDefinition)) {
+                return getTypeFromIntrinsicTypeDefinition(typeDefinition);
+            }
+
+            if(isArrayTypeDefinition(typeDefinition)) {
+                return createArrayType(getTypeFromTypeDefinition(node, typeDefinition.elementType));
+            }
+
+            if(isUnionTypeDefinition(typeDefinition)) {
+                return getUnionType(typeDefinition.types.map(x => getTypeFromTypeDefinition(node, x)));
+            }
+
+            if(isIntersectionTypeDefinition(typeDefinition)) {
+                return getIntersectionType(typeDefinition.types.map(x => getTypeFromTypeDefinition(node, x)));
+            }
+
+            if(isGlobalReferenceTypeDefinition(typeDefinition)) {
+                const type = getGlobalType(escapeLeadingUnderscores(typeDefinition.name), typeDefinition.arity, /* reportError */ false);
+                if(!type) {
+                    error(node, Diagnostics.Check_error_Colon_0, `Could not find global type ${typeDefinition.name}}${getParametersTextFromArity(typeDefinition.arity)}.`);
+                    return neverType;
+                }
+
+                return type;
+            }
+
+            if(isGenericInstanceTypeDefinition(typeDefinition)) {
+                return createTypeReference(getTypeFromTypeDefinition(node, typeDefinition.type) as GenericType, typeDefinition.typeArguments.map(x => getTypeFromTypeDefinition(node, x)));
+            }
+
+            if(isObjectTypeDefinition(typeDefinition)) {
+                const members = createSymbolTable();
+
+                for(const memberDefinition of typeDefinition.members) {
+                    const symbolFlags = SymbolFlags.Property | (memberDefinition.optional ? SymbolFlags.Optional : 0);
+                    const symbol = createSymbol(symbolFlags, escapeLeadingUnderscores(memberDefinition.name));
+
+                    symbol.type = getTypeFromTypeDefinition(node, memberDefinition);
+
+                    members.set(symbol.escapedName, symbol);
+                }
+
+                const type = createAnonymousType(undefined, members, emptyArray, emptyArray, emptyArray);
+                type.objectFlags |= (ObjectFlags.ObjectLiteral | ObjectFlags.ContainsObjectOrArrayLiteral);
+
+                return type;
+            }
+
+            if(isObjectMemberTypeDefinition(typeDefinition)) {
+                return getTypeFromTypeDefinition(node, typeDefinition.type);
+            }
+
+            throw new Error(`Unresolved type definition kind ${TypeDefinitionKind[typeDefinition.kind]}`);
+        }
+
         function checkTaggedTemplateExpression(node: TaggedTemplateExpression): Type {
             if (!checkGrammarTaggedTemplateChain(node)) checkGrammarTypeArguments(node, node.typeArguments);
             if (languageVersion < ScriptTarget.ES2015) {
                 checkExternalEmitHelpers(node, ExternalEmitHelpers.MakeTemplateObject);
             }
+
             const signature = getResolvedSignature(node);
             checkDeprecatedSignature(signature, node);
+
+            if(signature.declaration && isMacroDeclarationNode(signature.declaration) && isMacroTaggedTemplateExpressionNode(node)) {
+                checkGrammarMacroTaggedTemplateExpression(node, signature.declaration);
+            }
+
             return getReturnTypeOfSignature(signature);
         }
 
@@ -33444,12 +33670,12 @@ namespace ts {
                 if (type && type.flags & TypeFlags.Never) {
                     error(errorNode, Diagnostics.A_function_returning_never_cannot_have_a_reachable_end_point);
                 }
-                else if (type && !hasExplicitReturn) {
+                else if (type && !hasExplicitReturn && !hasSyntacticModifier(func, ModifierFlags.Macro)) {
                     // minimal check: function has syntactic return type annotation and no explicit return statements in the body
                     // this function does not conform to the specification.
                     error(errorNode, Diagnostics.A_function_whose_declared_type_is_neither_void_nor_any_must_return_a_value);
                 }
-                else if (type && strictNullChecks && !isTypeAssignableTo(undefinedType, type)) {
+                else if (type && strictNullChecks && !isTypeAssignableTo(undefinedType, type) && !hasSyntacticModifier(func, ModifierFlags.Macro)) {
                     error(errorNode, Diagnostics.Function_lacks_ending_return_statement_and_return_type_does_not_include_undefined);
                 }
                 else if (compilerOptions.noImplicitReturns) {
@@ -33476,6 +33702,10 @@ namespace ts {
 
             if (isFunctionExpression(node)) {
                 checkCollisionsForDeclarationName(node, node.name);
+            }
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroDeclaration(node);
             }
 
             // The identityMapper object is used to indicate that function expressions are wildcards
@@ -33561,6 +33791,10 @@ namespace ts {
             const functionFlags = getFunctionFlags(node);
             const returnType = getReturnTypeFromAnnotation(node);
             checkAllCodePathsInNonVoidFunctionReturnOrThrow(node, returnType);
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroDeclaration(node);
+            }
 
             if (node.body) {
                 if (!getEffectiveReturnTypeNode(node)) {
@@ -37578,7 +37812,7 @@ namespace ts {
             checkExternalEmitHelpers(firstDecorator, ExternalEmitHelpers.Decorate);
             if (node.kind === SyntaxKind.Parameter) {
                 checkExternalEmitHelpers(firstDecorator, ExternalEmitHelpers.Param);
-            }
+   }
 
             if (compilerOptions.emitDecoratorMetadata) {
                 checkExternalEmitHelpers(firstDecorator, ExternalEmitHelpers.Metadata);
@@ -37737,6 +37971,24 @@ namespace ts {
             }
         }
 
+        function checkMacroDeclaration(node: Node): void {
+            if(isFunctionDeclaration(node) || isFunctionExpression(node)) {
+                if(!node.name) {
+                    error(node, Diagnostics.Macro_functions_must_be_named);
+                    return;
+                }
+
+                if(hasSyntacticModifier(node, ModifierFlags.Async)) {
+                    error(node, Diagnostics.Macro_functions_must_not_be_async);
+                    return;
+                }
+            }
+            else {
+                error(node, Diagnostics.Macro_keyword_is_only_allowed_on_function_expressions_or_function_declarations);
+                return;
+            }
+        }
+
         function checkFunctionOrMethodDeclaration(node: FunctionDeclaration | MethodDeclaration | MethodSignature): void {
             checkDecorators(node);
             checkSignatureDeclaration(node);
@@ -37749,6 +38001,10 @@ namespace ts {
                 // This check will account for methods in class/interface declarations,
                 // as well as accessors in classes/object literals
                 checkComputedPropertyName(node.name);
+            }
+
+            if(hasSyntacticModifier(node, ModifierFlags.Macro)) {
+                checkMacroDeclaration(node);
             }
 
             if (hasBindableName(node)) {
@@ -38634,6 +38890,7 @@ namespace ts {
 
         function checkVariableDeclaration(node: VariableDeclaration) {
             tracing?.push(tracing.Phase.Check, "checkVariableDeclaration", { kind: node.kind, pos: node.pos, end: node.end, path: (node as TracingNode).tracingPath });
+
             checkGrammarVariableDeclaration(node);
             checkVariableLikeDeclaration(node);
             tracing?.pop();
@@ -39816,6 +40073,12 @@ namespace ts {
             }
 
             const container = getContainingFunctionOrClassStaticBlock(node);
+
+            if(container && isMacroDeclarationNode(container)) {
+                // return statements are not checked in macros
+                return;
+            }
+
             if(container && isClassStaticBlockDeclaration(container)) {
                 grammarErrorOnFirstToken(node, Diagnostics.A_return_statement_cannot_be_used_inside_a_class_static_block);
                 return;
@@ -39877,6 +40140,27 @@ namespace ts {
                 grammarErrorAtPos(sourceFile, start, end - start, Diagnostics.The_with_statement_is_not_supported_All_symbols_in_a_with_block_will_have_type_any);
             }
         }
+
+        function checkUseStatement(node: UseStatement) {
+            checkGrammarStatementInAmbientContext(node);
+
+            for(const expr of node.expressions) {
+                checkExpression(expr);
+            }
+
+            checkSourceElement(node.body);
+        }
+
+        function checkDeferStatement(node: DeferStatement) {
+            checkGrammarStatementInAmbientContext(node);
+
+            // if(!isFunctionBlock(node.parent)) {
+            //     error(node, Diagnostics.Defer_statements_can_only_be_used_within_a_function_body);
+            // }
+
+            checkSourceElement(node.body);
+        }
+
 
         function checkSwitchStatement(node: SwitchStatement) {
             // Grammar checking
@@ -40290,10 +40574,60 @@ namespace ts {
             if (!node.name && !hasSyntacticModifier(node, ModifierFlags.Default)) {
                 grammarErrorOnFirstToken(node, Diagnostics.A_class_declaration_without_the_default_modifier_must_have_a_name);
             }
+
+            checkDerivesHeritageClause(node);
             checkClassLikeDeclaration(node);
             forEach(node.members, checkSourceElement);
 
             registerForUnusedIdentifiersCheck(node);
+        }
+
+        function checkDerivesHeritageClause(node: ClassDeclaration) {
+            const elements = getClassDerivesHeritageElements(node);
+            const deriveMacros = getDeriveMacrosMap();
+
+            let hasError = false;
+
+            for(let element of elements) {
+                if(isIdentifier(element.expression)) {
+                    const name = element.expression.escapedText.toString();
+
+                    let type: Type | undefined;
+                    
+                    try {
+                        type = getTypeFromTypeNode(element);
+                    } catch(ex) {}
+
+                    if(!type?.symbol) {
+                        error(element, Diagnostics.Cannot_find_name_0, name);
+                        hasError = true;
+                        continue;
+                    }
+
+                    if(!(type.symbol.flags & SymbolFlags.Interface)) {
+                        error(element, Diagnostics.Derived_elements_must_be_interfaces);
+                        hasError = true;
+                        continue;
+                    }
+
+
+                    const declaration = deriveMacros.get(name);
+                    if(!declaration) {
+                        error(element, Diagnostics.Derived_interface_0_is_not_implemented_by_any_macro, name);
+                        hasError = true;
+                        continue;
+                    }
+
+                } else {
+                    error(element, Diagnostics.Derives_clause_must_be_used_with_indetifiers);
+                    hasError = true;
+                }
+            }
+
+            if(!hasError) {
+                checkDeriveHeritageClauseMacro(node, checker, reportCheckApiDiagnostic(node))
+            }
+
         }
 
         function checkClassLikeDeclaration(node: ClassLikeDeclaration) {
@@ -42207,6 +42541,10 @@ namespace ts {
                     return checkReturnStatement(node as ReturnStatement);
                 case SyntaxKind.WithStatement:
                     return checkWithStatement(node as WithStatement);
+                case SyntaxKind.UseStatement:
+                    return checkUseStatement(node as UseStatement);
+                case SyntaxKind.DeferStatement:
+                    return checkDeferStatement(node as DeferStatement);
                 case SyntaxKind.SwitchStatement:
                     return checkSwitchStatement(node as SwitchStatement);
                 case SyntaxKind.LabeledStatement:
@@ -45014,6 +45352,7 @@ namespace ts {
         function checkGrammarClassDeclarationHeritageClauses(node: ClassLikeDeclaration) {
             let seenExtendsClause = false;
             let seenImplementsClause = false;
+            let seenDerivesClause = false;
 
             if (!checkGrammarDecoratorsAndModifiers(node) && node.heritageClauses) {
                 for (const heritageClause of node.heritageClauses) {
@@ -45032,13 +45371,20 @@ namespace ts {
 
                         seenExtendsClause = true;
                     }
-                    else {
+                    else if(heritageClause.token === SyntaxKind.ImplementsKeyword) {
                         Debug.assert(heritageClause.token === SyntaxKind.ImplementsKeyword);
                         if (seenImplementsClause) {
                             return grammarErrorOnFirstToken(heritageClause, Diagnostics.implements_clause_already_seen);
                         }
 
                         seenImplementsClause = true;
+                    }
+ else {
+                        Debug.assert(heritageClause.token === SyntaxKind.DerivesKeyword);
+                        if(seenDerivesClause) {
+                            return grammarErrorOnFirstToken(heritageClause, Diagnostics.Derives_clause_already_seen);
+                        }
+                        seenDerivesClause = true;
                     }
 
                     // Grammar checking heritageClause inside class declaration
@@ -45059,9 +45405,11 @@ namespace ts {
 
                         seenExtendsClause = true;
                     }
-                    else {
-                        Debug.assert(heritageClause.token === SyntaxKind.ImplementsKeyword);
+                    else if(heritageClause.token === SyntaxKind.ImplementsKeyword) {
                         return grammarErrorOnFirstToken(heritageClause, Diagnostics.Interface_declaration_cannot_have_implements_clause);
+                    } else {
+                        Debug.assert(heritageClause.token === SyntaxKind.DerivesKeyword);
+                        return grammarErrorOnFirstToken(heritageClause, Diagnostics.Interface_declaration_cannot_have_derives_clause);;
                     }
 
                     // Grammar checking heritageClause inside class declaration

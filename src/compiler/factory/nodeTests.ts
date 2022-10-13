@@ -535,6 +535,14 @@ namespace ts {
         return node.kind === SyntaxKind.WithStatement;
     }
 
+    export function isUseStatement(node: Node): node is UseStatement {
+        return node.kind === SyntaxKind.UseStatement;
+    }
+
+    export function isDeferStatement(node: Node): node is DeferStatement {
+        return node.kind === SyntaxKind.DeferStatement;
+    }
+
     export function isSwitchStatement(node: Node): node is SwitchStatement {
         return node.kind === SyntaxKind.SwitchStatement;
     }

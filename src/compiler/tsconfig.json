@@ -38,6 +38,12 @@
         "commandLineParser.ts",
         "moduleNameResolver.ts",
 
+        "loader.ts",
+        "macros.ts",
+
+        "macrosApi/transform.ts",
+        "macrosApi/check.ts",
+
         "binder.ts",
         "symbolWalker.ts",
         "checker.ts",
@@ -46,6 +52,7 @@
         "transformers/utilities.ts",
         "transformers/destructuring.ts",
         "transformers/taggedTemplate.ts",
+        "transformers/custom.ts",
         "transformers/ts.ts",
         "transformers/classFields.ts",
         "transformers/typeSerializer.ts",

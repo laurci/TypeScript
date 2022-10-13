@@ -260,6 +260,10 @@ namespace ts {
             updateReturnStatement,
             createWithStatement,
             updateWithStatement,
+            createUseStatement,
+            updateUseStatement,
+            createDeferStatement,
+            updateDeferStatement,
             createSwitchStatement,
             updateSwitchStatement,
             createLabeledStatement,
@@ -3558,6 +3562,38 @@ namespace ts {
         }
 
         // @api
+        function createUseStatement(expressions: Expression[], body: Statement) {
+            const node = createBaseNode<UseStatement>(SyntaxKind.UseStatement);
+            node.expressions = expressions;
+            node.body = asEmbeddedStatement(body);
+            node.transformFlags |= propagateChildFlags(node.body);
+
+            return node;
+        }
+
+        // @api
+        function updateUseStatement(node: UseStatement, expressions: Expression[], body: Statement) {
+            return node.expressions.length !== expressions.length || node.expressions.some(expr => !expressions.includes(expr)) || node.body !== body
+                ? update(createUseStatement(expressions, body), node)
+                : node;
+        }
+
+        // @api
+        function createDeferStatement(body: Statement) {
+            const node = createBaseNode<DeferStatement>(SyntaxKind.DeferStatement);
+            node.body = asEmbeddedStatement(body);
+            node.transformFlags |= propagateChildFlags(node.body);
+            return node;
+        }
+
+        // @api
+        function updateDeferStatement(node: DeferStatement, body: Statement) {
+            return node.body !== body
+                ? update(createDeferStatement(body), node)
+                : node;
+        }
+
+        // @api
         function createSwitchStatement(expression: Expression, caseBlock: CaseBlock): SwitchStatement {
             const node = createBaseNode<SwitchStatement>(SyntaxKind.SwitchStatement);
             node.expression = parenthesizerRules().parenthesizeExpressionForDisallowedComma(expression);
@@ -5173,6 +5209,9 @@ namespace ts {
                     node.transformFlags |= TransformFlags.ContainsES2015;
                     break;
                 case SyntaxKind.ImplementsKeyword:
+                    node.transformFlags |= TransformFlags.ContainsTypeScript;
+                    break;
+                case SyntaxKind.DerivesKeyword:
                     node.transformFlags |= TransformFlags.ContainsTypeScript;
                     break;
                 default:

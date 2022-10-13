@@ -1488,6 +1488,10 @@ namespace ts {
                         return emitReturnStatement(node as ReturnStatement);
                     case SyntaxKind.WithStatement:
                         return emitWithStatement(node as WithStatement);
+                    case SyntaxKind.UseStatement:
+                        return emitUseStatement(node as UseStatement);
+                    case SyntaxKind.DeferStatement:
+                        return emitDeferStatement(node as DeferStatement);
                     case SyntaxKind.SwitchStatement:
                         return emitSwitchStatement(node as SwitchStatement);
                     case SyntaxKind.LabeledStatement:
@@ -1683,6 +1687,9 @@ namespace ts {
                     case SyntaxKind.NotEmittedStatement:
                     case SyntaxKind.EndOfDeclarationMarker:
                     case SyntaxKind.MergeDeclarationMarker:
+                        return;
+
+                    case SyntaxKind.MacroKeyword:
                         return;
                 }
                 if (isExpression(node)) {
@@ -3112,6 +3119,13 @@ namespace ts {
             emitEmbeddedStatement(node, node.statement);
         }
 
+        function emitUseStatement(_node: UseStatement) {
+        }
+
+        function emitDeferStatement(_node: DeferStatement) {
+            // don't emit defer statements. they are handled by the transformer
+        }
+
         function emitSwitchStatement(node: SwitchStatement) {
             const openParenPos = emitTokenWithComment(SyntaxKind.SwitchKeyword, node.pos, writeKeyword, node);
             writeSpace();
@@ -3749,6 +3763,11 @@ namespace ts {
         }
 
         function emitHeritageClause(node: HeritageClause) {
+            // Don't emit derives
+            if(node.token === SyntaxKind.DerivesKeyword) {
+                return;
+            }
+
             writeSpace();
             writeTokenText(node.token, writeKeyword);
             writeSpace();

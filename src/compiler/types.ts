@@ -125,6 +125,7 @@ namespace ts {
         EnumKeyword,
         ExportKeyword,
         ExtendsKeyword,
+        DerivesKeyword,
         FalseKeyword,
         FinallyKeyword,
         ForKeyword,
@@ -145,6 +146,8 @@ namespace ts {
         TypeOfKeyword,
         VarKeyword,
         VoidKeyword,
+        UseKeyword,
+        DeferKeyword,
         WhileKeyword,
         WithKeyword,
         // Strict mode reserved words
@@ -165,6 +168,7 @@ namespace ts {
         AssertKeyword,
         AnyKeyword,
         AsyncKeyword,
+        MacroKeyword,
         AwaitKeyword,
         BooleanKeyword,
         ConstructorKeyword,
@@ -295,6 +299,8 @@ namespace ts {
         ContinueStatement,
         BreakStatement,
         ReturnStatement,
+        UseStatement,
+        DeferStatement,
         WithStatement,
         SwitchStatement,
         LabeledStatement,
@@ -557,6 +563,7 @@ namespace ts {
         | SyntaxKind.AssertsKeyword
         | SyntaxKind.AssertKeyword
         | SyntaxKind.AsyncKeyword
+        | SyntaxKind.MacroKeyword
         | SyntaxKind.AwaitKeyword
         | SyntaxKind.BigIntKeyword
         | SyntaxKind.BooleanKeyword
@@ -576,6 +583,7 @@ namespace ts {
         | SyntaxKind.EnumKeyword
         | SyntaxKind.ExportKeyword
         | SyntaxKind.ExtendsKeyword
+        | SyntaxKind.DerivesKeyword
         | SyntaxKind.FalseKeyword
         | SyntaxKind.FinallyKeyword
         | SyntaxKind.ForKeyword
@@ -629,6 +637,8 @@ namespace ts {
         | SyntaxKind.UnknownKeyword
         | SyntaxKind.VarKeyword
         | SyntaxKind.VoidKeyword
+        | SyntaxKind.UseKeyword
+        | SyntaxKind.DeferKeyword
         | SyntaxKind.WhileKeyword
         | SyntaxKind.WithKeyword
         | SyntaxKind.YieldKeyword
@@ -638,6 +648,7 @@ namespace ts {
         | SyntaxKind.AbstractKeyword
         | SyntaxKind.AccessorKeyword
         | SyntaxKind.AsyncKeyword
+        | SyntaxKind.MacroKeyword
         | SyntaxKind.ConstKeyword
         | SyntaxKind.DeclareKeyword
         | SyntaxKind.DefaultKeyword
@@ -832,6 +843,7 @@ namespace ts {
         In =                 1 << 15, // Contravariance modifier
         Out =                1 << 16, // Covariance modifier
         Decorator =          1 << 17, // Contains a decorator.
+        Macro =              1 << 18, // Represents a macro.
         HasComputedFlags =   1 << 29, // Modifier flags have been computed
 
         AccessibilityModifier = Public | Private | Protected,
@@ -1031,6 +1043,8 @@ namespace ts {
         | BreakStatement
         | ReturnStatement
         | WithStatement
+        | UseStatement
+        | DeferStatement
         | SwitchStatement
         | LabeledStatement
         | ThrowStatement
@@ -1110,6 +1124,8 @@ namespace ts {
         | ContinueStatement
         | ReturnStatement
         | WithStatement
+        | UseStatement
+        | DeferStatement
         | SwitchStatement
         | LabeledStatement
         | ThrowStatement
@@ -1339,6 +1355,7 @@ namespace ts {
     export type AbstractKeyword = ModifierToken<SyntaxKind.AbstractKeyword>;
     export type AccessorKeyword = ModifierToken<SyntaxKind.AccessorKeyword>;
     export type AsyncKeyword = ModifierToken<SyntaxKind.AsyncKeyword>;
+    export type MacroKeyword = ModifierToken<SyntaxKind.MacroKeyword>;
     export type ConstKeyword = ModifierToken<SyntaxKind.ConstKeyword>;
     export type DeclareKeyword = ModifierToken<SyntaxKind.DeclareKeyword>;
     export type DefaultKeyword = ModifierToken<SyntaxKind.DefaultKeyword>;
@@ -1359,6 +1376,7 @@ namespace ts {
         | AbstractKeyword
         | AccessorKeyword
         | AsyncKeyword
+        | MacroKeyword
         | ConstKeyword
         | DeclareKeyword
         | DefaultKeyword
@@ -3167,6 +3185,17 @@ namespace ts {
         readonly statement: Statement;
     }
 
+    export interface UseStatement extends Statement {
+        readonly kind: SyntaxKind.UseStatement;
+        readonly expressions: Expression[];
+        readonly body: Statement;
+    }
+
+    export interface DeferStatement extends Statement {
+        readonly kind: SyntaxKind.DeferStatement;
+        readonly body: Statement;
+    }
+
     export interface SwitchStatement extends Statement {
         readonly kind: SyntaxKind.SwitchStatement;
         readonly expression: Expression;
@@ -3297,7 +3326,7 @@ namespace ts {
     export interface HeritageClause extends Node {
         readonly kind: SyntaxKind.HeritageClause;
         readonly parent: InterfaceDeclaration | ClassLikeDeclaration;
-        readonly token: SyntaxKind.ExtendsKeyword | SyntaxKind.ImplementsKeyword;
+        readonly token: SyntaxKind.ExtendsKeyword | SyntaxKind.ImplementsKeyword | SyntaxKind.DerivesKeyword;
         readonly types: NodeArray<ExpressionWithTypeArguments>;
     }
 
@@ -4586,55 +4615,54 @@ namespace ts {
     }
 
     export interface TypeChecker {
+        getProgram(): Program;
         getTypeOfSymbolAtLocation(symbol: Symbol, node: Node): Type;
-        /* @internal */ getTypeOfSymbol(symbol: Symbol): Type;
+        getTypeOfSymbol(symbol: Symbol): Type;
         getDeclaredTypeOfSymbol(symbol: Symbol): Type;
         getPropertiesOfType(type: Type): Symbol[];
         getPropertyOfType(type: Type, propertyName: string): Symbol | undefined;
         getPrivateIdentifierPropertyOfType(leftType: Type, name: string, location: Node): Symbol | undefined;
-        /* @internal */ getTypeOfPropertyOfType(type: Type, propertyName: string): Type | undefined;
+        getTypeOfPropertyOfType(type: Type, propertyName: string): Type | undefined;
         getIndexInfoOfType(type: Type, kind: IndexKind): IndexInfo | undefined;
         getIndexInfosOfType(type: Type): readonly IndexInfo[];
         getIndexInfosOfIndexSymbol: (indexSymbol: Symbol) => IndexInfo[];
         getSignaturesOfType(type: Type, kind: SignatureKind): readonly Signature[];
         getIndexTypeOfType(type: Type, kind: IndexKind): Type | undefined;
-        /* @internal */ getIndexType(type: Type): Type;
+        getIndexType(type: Type): Type;
         getBaseTypes(type: InterfaceType): BaseType[];
         getBaseTypeOfLiteralType(type: Type): Type;
         getWidenedType(type: Type): Type;
-        /* @internal */
         getPromisedTypeOfPromise(promise: Type, errorNode?: Node): Type | undefined;
-        /* @internal */
         getAwaitedType(type: Type): Type | undefined;
         getReturnTypeOfSignature(signature: Signature): Type;
         /**
          * Gets the type of a parameter at a given position in a signature.
          * Returns `any` if the index is not valid.
          */
-        /* @internal */ getParameterType(signature: Signature, parameterIndex: number): Type;
-        /* @internal */ getParameterIdentifierNameAtPosition(signature: Signature, parameterIndex: number): [parameterName: __String, isRestParameter: boolean] | undefined;
+        getParameterType(signature: Signature, parameterIndex: number): Type;
+        getParameterIdentifierNameAtPosition(signature: Signature, parameterIndex: number): [parameterName: __String, isRestParameter: boolean] | undefined;
         getNullableType(type: Type, flags: TypeFlags): Type;
         getNonNullableType(type: Type): Type;
-        /* @internal */ getNonOptionalType(type: Type): Type;
-        /* @internal */ isNullableType(type: Type): boolean;
+        getNonOptionalType(type: Type): Type;
+        isNullableType(type: Type): boolean;
         getTypeArguments(type: TypeReference): readonly Type[];
 
         // TODO: GH#18217 `xToDeclaration` calls are frequently asserted as defined.
         /** Note that the resulting nodes cannot be checked. */
         typeToTypeNode(type: Type, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): TypeNode | undefined;
-        /* @internal */ typeToTypeNode(type: Type, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined, tracker?: SymbolTracker): TypeNode | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
+        typeToTypeNode(type: Type, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined, tracker?: SymbolTracker): TypeNode | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
         /** Note that the resulting nodes cannot be checked. */
         signatureToSignatureDeclaration(signature: Signature, kind: SyntaxKind, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): SignatureDeclaration & {typeArguments?: NodeArray<TypeNode>} | undefined;
-        /* @internal */ signatureToSignatureDeclaration(signature: Signature, kind: SyntaxKind, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined, tracker?: SymbolTracker): SignatureDeclaration & {typeArguments?: NodeArray<TypeNode>} | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
+        signatureToSignatureDeclaration(signature: Signature, kind: SyntaxKind, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined, tracker?: SymbolTracker): SignatureDeclaration & {typeArguments?: NodeArray<TypeNode>} | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
         /** Note that the resulting nodes cannot be checked. */
         indexInfoToIndexSignatureDeclaration(indexInfo: IndexInfo, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): IndexSignatureDeclaration | undefined;
-        /* @internal */ indexInfoToIndexSignatureDeclaration(indexInfo: IndexInfo, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined, tracker?: SymbolTracker): IndexSignatureDeclaration | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
+        indexInfoToIndexSignatureDeclaration(indexInfo: IndexInfo, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined, tracker?: SymbolTracker): IndexSignatureDeclaration | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
         /** Note that the resulting nodes cannot be checked. */
         symbolToEntityName(symbol: Symbol, meaning: SymbolFlags, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): EntityName | undefined;
         /** Note that the resulting nodes cannot be checked. */
         symbolToExpression(symbol: Symbol, meaning: SymbolFlags, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): Expression | undefined;
         /** Note that the resulting nodes cannot be checked. */
-        /* @internal */ symbolToNode(symbol: Symbol, meaning: SymbolFlags, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): Node | undefined;
+        symbolToNode(symbol: Symbol, meaning: SymbolFlags, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): Node | undefined;
         /** Note that the resulting nodes cannot be checked. */
         symbolToTypeParameterDeclarations(symbol: Symbol, enclosingDeclaration: Node | undefined, flags: NodeBuilderFlags | undefined): NodeArray<TypeParameterDeclaration> | undefined;
         /** Note that the resulting nodes cannot be checked. */
@@ -4644,7 +4672,7 @@ namespace ts {
 
         getSymbolsInScope(location: Node, meaning: SymbolFlags): Symbol[];
         getSymbolAtLocation(node: Node): Symbol | undefined;
-        /* @internal */ getIndexInfosAtLocation(node: Node): readonly IndexInfo[] | undefined;
+        getIndexInfosAtLocation(node: Node): readonly IndexInfo[] | undefined;
         getSymbolsOfParameterPropertyDeclaration(parameter: ParameterDeclaration, parameterName: string): Symbol[];
         /**
          * The function returns the value (local variable) symbol of an identifier in the short-hand property assignment.
@@ -4672,10 +4700,10 @@ namespace ts {
         symbolToString(symbol: Symbol, enclosingDeclaration?: Node, meaning?: SymbolFlags, flags?: SymbolFormatFlags): string;
         typePredicateToString(predicate: TypePredicate, enclosingDeclaration?: Node, flags?: TypeFormatFlags): string;
 
-        /* @internal */ writeSignature(signature: Signature, enclosingDeclaration?: Node, flags?: TypeFormatFlags, kind?: SignatureKind, writer?: EmitTextWriter): string;
-        /* @internal */ writeType(type: Type, enclosingDeclaration?: Node, flags?: TypeFormatFlags, writer?: EmitTextWriter): string;
-        /* @internal */ writeSymbol(symbol: Symbol, enclosingDeclaration?: Node, meaning?: SymbolFlags, flags?: SymbolFormatFlags, writer?: EmitTextWriter): string;
-        /* @internal */ writeTypePredicate(predicate: TypePredicate, enclosingDeclaration?: Node, flags?: TypeFormatFlags, writer?: EmitTextWriter): string;
+        writeSignature(signature: Signature, enclosingDeclaration?: Node, flags?: TypeFormatFlags, kind?: SignatureKind, writer?: EmitTextWriter): string;
+        writeType(type: Type, enclosingDeclaration?: Node, flags?: TypeFormatFlags, writer?: EmitTextWriter): string;
+        writeSymbol(symbol: Symbol, enclosingDeclaration?: Node, meaning?: SymbolFlags, flags?: SymbolFormatFlags, writer?: EmitTextWriter): string;
+        writeTypePredicate(predicate: TypePredicate, enclosingDeclaration?: Node, flags?: TypeFormatFlags, writer?: EmitTextWriter): string;
 
         getFullyQualifiedName(symbol: Symbol): string;
         getAugmentedPropertiesOfType(type: Type): Symbol[];
@@ -4683,12 +4711,12 @@ namespace ts {
         getRootSymbols(symbol: Symbol): readonly Symbol[];
         getSymbolOfExpando(node: Node, allowDeclaration: boolean): Symbol | undefined;
         getContextualType(node: Expression): Type | undefined;
-        /* @internal */ getContextualType(node: Expression, contextFlags?: ContextFlags): Type | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
-        /* @internal */ getContextualTypeForObjectLiteralElement(element: ObjectLiteralElementLike): Type | undefined;
-        /* @internal */ getContextualTypeForArgumentAtIndex(call: CallLikeExpression, argIndex: number): Type | undefined;
-        /* @internal */ getContextualTypeForJsxAttribute(attribute: JsxAttribute | JsxSpreadAttribute): Type | undefined;
-        /* @internal */ isContextSensitive(node: Expression | MethodDeclaration | ObjectLiteralElementLike | JsxAttributeLike): boolean;
-        /* @internal */ getTypeOfPropertyOfContextualType(type: Type, name: __String): Type | undefined;
+        getContextualType(node: Expression, contextFlags?: ContextFlags): Type | undefined; // eslint-disable-line @typescript-eslint/unified-signatures
+        getContextualTypeForObjectLiteralElement(element: ObjectLiteralElementLike): Type | undefined;
+        getContextualTypeForArgumentAtIndex(call: CallLikeExpression, argIndex: number): Type | undefined;
+        getContextualTypeForJsxAttribute(attribute: JsxAttribute | JsxSpreadAttribute): Type | undefined;
+        isContextSensitive(node: Expression | MethodDeclaration | ObjectLiteralElementLike | JsxAttributeLike): boolean;
+        getTypeOfPropertyOfContextualType(type: Type, name: __String): Type | undefined;
 
         /**
          * returns unknownSignature in the case of an error.
@@ -4696,31 +4724,31 @@ namespace ts {
          * @param argumentCount Apparent number of arguments, passed in case of a possibly incomplete call. This should come from an ArgumentListInfo. See `signatureHelp.ts`.
          */
         getResolvedSignature(node: CallLikeExpression, candidatesOutArray?: Signature[], argumentCount?: number): Signature | undefined;
-        /* @internal */ getResolvedSignatureForSignatureHelp(node: CallLikeExpression, candidatesOutArray?: Signature[], argumentCount?: number): Signature | undefined;
-        /* @internal */ getResolvedSignatureForStringLiteralCompletions(call: CallLikeExpression, editingArgument: Node, candidatesOutArray: Signature[]): Signature | undefined;
-        /* @internal */ getExpandedParameters(sig: Signature): readonly (readonly Symbol[])[];
-        /* @internal */ hasEffectiveRestParameter(sig: Signature): boolean;
-        /* @internal */ containsArgumentsReference(declaration: SignatureDeclaration): boolean;
+        getResolvedSignatureForSignatureHelp(node: CallLikeExpression, candidatesOutArray?: Signature[], argumentCount?: number): Signature | undefined;
+        getResolvedSignatureForStringLiteralCompletions(call: CallLikeExpression, editingArgument: Node, candidatesOutArray: Signature[]): Signature | undefined;
+        getExpandedParameters(sig: Signature): readonly (readonly Symbol[])[];
+        hasEffectiveRestParameter(sig: Signature): boolean;
+        containsArgumentsReference(declaration: SignatureDeclaration): boolean;
 
         getSignatureFromDeclaration(declaration: SignatureDeclaration): Signature | undefined;
         isImplementationOfOverload(node: SignatureDeclaration): boolean | undefined;
         isUndefinedSymbol(symbol: Symbol): boolean;
         isArgumentsSymbol(symbol: Symbol): boolean;
         isUnknownSymbol(symbol: Symbol): boolean;
-        /* @internal */ getMergedSymbol(symbol: Symbol): Symbol;
+        getMergedSymbol(symbol: Symbol): Symbol;
 
         getConstantValue(node: EnumMember | PropertyAccessExpression | ElementAccessExpression): string | number | undefined;
         isValidPropertyAccess(node: PropertyAccessExpression | QualifiedName | ImportTypeNode, propertyName: string): boolean;
         /** Exclude accesses to private properties. */
-        /* @internal */ isValidPropertyAccessForCompletions(node: PropertyAccessExpression | ImportTypeNode | QualifiedName, type: Type, property: Symbol): boolean;
+        isValidPropertyAccessForCompletions(node: PropertyAccessExpression | ImportTypeNode | QualifiedName, type: Type, property: Symbol): boolean;
         /** Follow all aliases to get the original symbol. */
         getAliasedSymbol(symbol: Symbol): Symbol;
         /** Follow a *single* alias to get the immediately aliased symbol. */
         getImmediateAliasedSymbol(symbol: Symbol): Symbol | undefined;
         getExportsOfModule(moduleSymbol: Symbol): Symbol[];
         /** Unlike `getExportsOfModule`, this includes properties of an `export =` value. */
-        /* @internal */ getExportsAndPropertiesOfModule(moduleSymbol: Symbol): Symbol[];
-        /* @internal */ forEachExportAndPropertyOfModule(moduleSymbol: Symbol, cb: (symbol: Symbol, key: __String) => void): void;
+        getExportsAndPropertiesOfModule(moduleSymbol: Symbol): Symbol[];
+        forEachExportAndPropertyOfModule(moduleSymbol: Symbol, cb: (symbol: Symbol, key: __String) => void): void;
         getJsxIntrinsicTagNamesAt(location: Node): Symbol[];
         isOptionalParameter(node: ParameterDeclaration): boolean;
         getAmbientModules(): Symbol[];
@@ -4730,42 +4758,42 @@ namespace ts {
          * Unlike `tryGetMemberInModuleExports`, this includes properties of an `export =` value.
          * Does *not* return properties of primitive types.
          */
-        /* @internal */ tryGetMemberInModuleExportsAndProperties(memberName: string, moduleSymbol: Symbol): Symbol | undefined;
+        tryGetMemberInModuleExportsAndProperties(memberName: string, moduleSymbol: Symbol): Symbol | undefined;
         getApparentType(type: Type): Type;
-        /* @internal */ getSuggestedSymbolForNonexistentProperty(name: MemberName | string, containingType: Type): Symbol | undefined;
-        /* @internal */ getSuggestedSymbolForNonexistentJSXAttribute(name: Identifier | string, containingType: Type): Symbol | undefined;
-        /* @internal */ getSuggestionForNonexistentProperty(name: MemberName | string, containingType: Type): string | undefined;
-        /* @internal */ getSuggestedSymbolForNonexistentSymbol(location: Node, name: string, meaning: SymbolFlags): Symbol | undefined;
-        /* @internal */ getSuggestionForNonexistentSymbol(location: Node, name: string, meaning: SymbolFlags): string | undefined;
-        /* @internal */ getSuggestedSymbolForNonexistentModule(node: Identifier, target: Symbol): Symbol | undefined;
-        /* @internal */ getSuggestedSymbolForNonexistentClassMember(name: string, baseType: Type): Symbol | undefined;
-        /* @internal */ getSuggestionForNonexistentExport(node: Identifier, target: Symbol): string | undefined;
+        getSuggestedSymbolForNonexistentProperty(name: MemberName | string, containingType: Type): Symbol | undefined;
+        getSuggestedSymbolForNonexistentJSXAttribute(name: Identifier | string, containingType: Type): Symbol | undefined;
+        getSuggestionForNonexistentProperty(name: MemberName | string, containingType: Type): string | undefined;
+        getSuggestedSymbolForNonexistentSymbol(location: Node, name: string, meaning: SymbolFlags): Symbol | undefined;
+        getSuggestionForNonexistentSymbol(location: Node, name: string, meaning: SymbolFlags): string | undefined;
+        getSuggestedSymbolForNonexistentModule(node: Identifier, target: Symbol): Symbol | undefined;
+        getSuggestedSymbolForNonexistentClassMember(name: string, baseType: Type): Symbol | undefined;
+        getSuggestionForNonexistentExport(node: Identifier, target: Symbol): string | undefined;
         getBaseConstraintOfType(type: Type): Type | undefined;
         getDefaultFromTypeParameter(type: Type): Type | undefined;
 
-        /* @internal */ getAnyType(): Type;
-        /* @internal */ getStringType(): Type;
-        /* @internal */ getNumberType(): Type;
-        /* @internal */ getBooleanType(): Type;
-        /* @internal */ getFalseType(fresh?: boolean): Type;
-        /* @internal */ getTrueType(fresh?: boolean): Type;
-        /* @internal */ getVoidType(): Type;
-        /* @internal */ getUndefinedType(): Type;
-        /* @internal */ getNullType(): Type;
-        /* @internal */ getESSymbolType(): Type;
-        /* @internal */ getNeverType(): Type;
-        /* @internal */ getOptionalType(): Type;
-        /* @internal */ getUnionType(types: Type[], subtypeReduction?: UnionReduction): Type;
-        /* @internal */ createArrayType(elementType: Type): Type;
-        /* @internal */ getElementTypeOfArrayType(arrayType: Type): Type | undefined;
-        /* @internal */ createPromiseType(type: Type): Type;
-        /* @internal */ getPromiseType(): Type;
-        /* @internal */ getPromiseLikeType(): Type;
-        /* @internal */ getAsyncIterableType(): Type | undefined;
+        getAnyType(): Type;
+        getStringType(): Type;
+        getNumberType(): Type;
+        getBooleanType(): Type;
+        getFalseType(fresh?: boolean): Type;
+        getTrueType(fresh?: boolean): Type;
+        getVoidType(): Type;
+        getUndefinedType(): Type;
+        getNullType(): Type;
+        getESSymbolType(): Type;
+        getNeverType(): Type;
+        getOptionalType(): Type;
+        getUnionType(types: Type[], subtypeReduction?: UnionReduction): Type;
+        createArrayType(elementType: Type): Type;
+        getElementTypeOfArrayType(arrayType: Type): Type | undefined;
+        createPromiseType(type: Type): Type;
+        getPromiseType(): Type;
+        getPromiseLikeType(): Type;
+        getAsyncIterableType(): Type | undefined;
 
-        /* @internal */ isTypeAssignableTo(source: Type, target: Type): boolean;
-        /* @internal */ createAnonymousType(symbol: Symbol | undefined, members: SymbolTable, callSignatures: Signature[], constructSignatures: Signature[], indexInfos: IndexInfo[]): Type;
-        /* @internal */ createSignature(
+        isTypeAssignableTo(source: Type, target: Type): boolean;
+        createAnonymousType(symbol: Symbol | undefined, members: SymbolTable, callSignatures: Signature[], constructSignatures: Signature[], indexInfos: IndexInfo[]): Type;
+        createSignature(
             declaration: SignatureDeclaration | undefined,
             typeParameters: readonly TypeParameter[] | undefined,
             thisParameter: Symbol | undefined,
@@ -4775,47 +4803,47 @@ namespace ts {
             minArgumentCount: number,
             flags: SignatureFlags
         ): Signature;
-        /* @internal */ createSymbol(flags: SymbolFlags, name: __String): TransientSymbol;
-        /* @internal */ createIndexInfo(keyType: Type, type: Type, isReadonly: boolean, declaration?: SignatureDeclaration): IndexInfo;
-        /* @internal */ isSymbolAccessible(symbol: Symbol, enclosingDeclaration: Node | undefined, meaning: SymbolFlags, shouldComputeAliasToMarkVisible: boolean): SymbolAccessibilityResult;
-        /* @internal */ tryFindAmbientModule(moduleName: string): Symbol | undefined;
-        /* @internal */ tryFindAmbientModuleWithoutAugmentations(moduleName: string): Symbol | undefined;
+        createSymbol(flags: SymbolFlags, name: __String): TransientSymbol;
+        createIndexInfo(keyType: Type, type: Type, isReadonly: boolean, declaration?: SignatureDeclaration): IndexInfo;
+        isSymbolAccessible(symbol: Symbol, enclosingDeclaration: Node | undefined, meaning: SymbolFlags, shouldComputeAliasToMarkVisible: boolean): SymbolAccessibilityResult;
+        tryFindAmbientModule(moduleName: string): Symbol | undefined;
+        tryFindAmbientModuleWithoutAugmentations(moduleName: string): Symbol | undefined;
 
-        /* @internal */ getSymbolWalker(accept?: (symbol: Symbol) => boolean): SymbolWalker;
+        getSymbolWalker(accept?: (symbol: Symbol) => boolean): SymbolWalker;
 
         // Should not be called directly.  Should only be accessed through the Program instance.
-        /* @internal */ getDiagnostics(sourceFile?: SourceFile, cancellationToken?: CancellationToken): Diagnostic[];
-        /* @internal */ getGlobalDiagnostics(): Diagnostic[];
-        /* @internal */ getEmitResolver(sourceFile?: SourceFile, cancellationToken?: CancellationToken): EmitResolver;
+        getDiagnostics(sourceFile?: SourceFile, cancellationToken?: CancellationToken): Diagnostic[];
+        getGlobalDiagnostics(): Diagnostic[];
+        getEmitResolver(sourceFile?: SourceFile, cancellationToken?: CancellationToken): EmitResolver;
 
-        /* @internal */ getNodeCount(): number;
-        /* @internal */ getIdentifierCount(): number;
-        /* @internal */ getSymbolCount(): number;
-        /* @internal */ getTypeCount(): number;
-        /* @internal */ getInstantiationCount(): number;
-        /* @internal */ getRelationCacheSizes(): { assignable: number, identity: number, subtype: number, strictSubtype: number };
-        /* @internal */ getRecursionIdentity(type: Type): object | undefined;
-        /* @internal */ getUnmatchedProperties(source: Type, target: Type, requireOptionalProperties: boolean, matchDiscriminantProperties: boolean): IterableIterator<Symbol>;
+        getNodeCount(): number;
+        getIdentifierCount(): number;
+        getSymbolCount(): number;
+        getTypeCount(): number;
+        getInstantiationCount(): number;
+        getRelationCacheSizes(): { assignable: number, identity: number, subtype: number, strictSubtype: number };
+        getRecursionIdentity(type: Type): object | undefined;
+        getUnmatchedProperties(source: Type, target: Type, requireOptionalProperties: boolean, matchDiscriminantProperties: boolean): IterableIterator<Symbol>;
 
-        /* @internal */ isArrayType(type: Type): boolean;
-        /* @internal */ isTupleType(type: Type): boolean;
-        /* @internal */ isArrayLikeType(type: Type): boolean;
+        isArrayType(type: Type): boolean;
+        isTupleType(type: Type): boolean;
+        isArrayLikeType(type: Type): boolean;
 
         /**
          * True if `contextualType` should not be considered for completions because
          * e.g. it specifies `kind: "a"` and obj has `kind: "b"`.
          */
-        /* @internal */ isTypeInvalidDueToUnionDiscriminant(contextualType: Type, obj: ObjectLiteralExpression | JsxAttributes): boolean;
-        /* @internal */ getExactOptionalProperties(type: Type): Symbol[];
+        isTypeInvalidDueToUnionDiscriminant(contextualType: Type, obj: ObjectLiteralExpression | JsxAttributes): boolean;
+        getExactOptionalProperties(type: Type): Symbol[];
         /**
          * For a union, will include a property if it's defined in *any* of the member types.
          * So for `{ a } | { b }`, this will include both `a` and `b`.
          * Does not include properties of primitive types.
          */
-        /* @internal */ getAllPossiblePropertiesOfTypes(type: readonly Type[]): Symbol[];
-        /* @internal */ resolveName(name: string, location: Node | undefined, meaning: SymbolFlags, excludeGlobals: boolean): Symbol | undefined;
-        /* @internal */ getJsxNamespace(location?: Node): string;
-        /* @internal */ getJsxFragmentFactory(location: Node): string | undefined;
+        getAllPossiblePropertiesOfTypes(type: readonly Type[]): Symbol[];
+        resolveName(name: string, location: Node | undefined, meaning: SymbolFlags, excludeGlobals: boolean): Symbol | undefined;
+        getJsxNamespace(location?: Node): string;
+        getJsxFragmentFactory(location: Node): string | undefined;
 
         /**
          * Note that this will return undefined in the following case:
@@ -4826,23 +4854,23 @@ namespace ts {
          * Where `C` is the symbol we're looking for.
          * This should be called in a loop climbing parents of the symbol, so we'll get `N`.
          */
-        /* @internal */ getAccessibleSymbolChain(symbol: Symbol, enclosingDeclaration: Node | undefined, meaning: SymbolFlags, useOnlyExternalAliasing: boolean): Symbol[] | undefined;
+        getAccessibleSymbolChain(symbol: Symbol, enclosingDeclaration: Node | undefined, meaning: SymbolFlags, useOnlyExternalAliasing: boolean): Symbol[] | undefined;
         getTypePredicateOfSignature(signature: Signature): TypePredicate | undefined;
-        /* @internal */ resolveExternalModuleName(moduleSpecifier: Expression): Symbol | undefined;
+        resolveExternalModuleName(moduleSpecifier: Expression): Symbol | undefined;
         /**
          * An external module with an 'export =' declaration resolves to the target of the 'export =' declaration,
          * and an external module with no 'export =' declaration resolves to the module itself.
          */
-        /* @internal */ resolveExternalModuleSymbol(symbol: Symbol): Symbol;
+        resolveExternalModuleSymbol(symbol: Symbol): Symbol;
         /** @param node A location where we might consider accessing `this`. Not necessarily a ThisExpression. */
-        /* @internal */ tryGetThisTypeAt(node: Node, includeGlobalThis?: boolean, container?: Node): Type | undefined;
-        /* @internal */ getTypeArgumentConstraint(node: TypeNode): Type | undefined;
+        tryGetThisTypeAt(node: Node, includeGlobalThis?: boolean, container?: Node): Type | undefined;
+        getTypeArgumentConstraint(node: TypeNode): Type | undefined;
 
         /**
          * Does *not* get *all* suggestion diagnostics, just the ones that were convenient to report in the checker.
          * Others are added in computeSuggestionDiagnostics.
          */
-        /* @internal */ getSuggestionDiagnostics(file: SourceFile, cancellationToken?: CancellationToken): readonly DiagnosticWithLocation[];
+        getSuggestionDiagnostics(file: SourceFile, cancellationToken?: CancellationToken): readonly DiagnosticWithLocation[];
 
         /**
          * Depending on the operation performed, it may be appropriate to throw away the checker
@@ -4851,12 +4879,12 @@ namespace ts {
          */
         runWithCancellationToken<T>(token: CancellationToken, cb: (checker: TypeChecker) => T): T;
 
-        /* @internal */ getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol: Symbol): readonly TypeParameter[] | undefined;
-        /* @internal */ isDeclarationVisible(node: Declaration | AnyImportSyntax): boolean;
-        /* @internal */ isPropertyAccessible(node: Node, isSuper: boolean, isWrite: boolean, containingType: Type, property: Symbol): boolean;
-        /* @internal */ getTypeOnlyAliasDeclaration(symbol: Symbol): TypeOnlyAliasDeclaration | undefined;
-        /* @internal */ getMemberOverrideModifierStatus(node: ClassLikeDeclaration, member: ClassElement): MemberOverrideStatus;
-        /* @internal */ isTypeParameterPossiblyReferenced(tp: TypeParameter, node: Node): boolean;
+        getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol: Symbol): readonly TypeParameter[] | undefined;
+        isDeclarationVisible(node: Declaration | AnyImportSyntax): boolean;
+        isPropertyAccessible(node: Node, isSuper: boolean, isWrite: boolean, containingType: Type, property: Symbol): boolean;
+        getTypeOnlyAliasDeclaration(symbol: Symbol): TypeOnlyAliasDeclaration | undefined;
+        getMemberOverrideModifierStatus(node: ClassLikeDeclaration, member: ClassElement): MemberOverrideStatus;
+        isTypeParameterPossiblyReferenced(tp: TypeParameter, node: Node): boolean;
     }
 
     /* @internal */
@@ -6670,6 +6698,8 @@ namespace ts {
         /* @internal */ showConfig?: boolean;
         useDefineForClassFields?: boolean;
 
+        /* @internal */ metaprogram?: boolean;
+
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
     }
 
@@ -7957,6 +7987,10 @@ namespace ts {
         updateReturnStatement(node: ReturnStatement, expression: Expression | undefined): ReturnStatement;
         createWithStatement(expression: Expression, statement: Statement): WithStatement;
         updateWithStatement(node: WithStatement, expression: Expression, statement: Statement): WithStatement;
+        createUseStatement(expressions: Expression[], body: Statement): UseStatement;
+        updateUseStatement(node: UseStatement, expressions: Expression[], body: Statement): UseStatement;
+        createDeferStatement(body: Statement): DeferStatement;
+        updateDeferStatement(node: DeferStatement, body: Statement): DeferStatement;
         createSwitchStatement(expression: Expression, caseBlock: CaseBlock): SwitchStatement;
         updateSwitchStatement(node: SwitchStatement, expression: Expression, caseBlock: CaseBlock): SwitchStatement;
         createLabeledStatement(label: string | Identifier, statement: Statement): LabeledStatement;

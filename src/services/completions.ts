@@ -3914,6 +3914,7 @@ namespace ts.Completions {
             case SyntaxKind.EnumKeyword:
             case SyntaxKind.GlobalKeyword:
             case SyntaxKind.ImplementsKeyword:
+            case SyntaxKind.DerivesKeyword:
             case SyntaxKind.InferKeyword:
             case SyntaxKind.InterfaceKeyword:
             case SyntaxKind.IsKeyword:
