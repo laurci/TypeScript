@@ -1,8 +1,8 @@
 {
-    "name": "typescript",
-    "author": "Microsoft Corp.",
+    "name": "@laurci/typescript",
+    "author": "Laurentiu Ciobanu",
     "homepage": "https://www.typescriptlang.org/",
-    "version": "4.9.0",
+    "version": "4.9.0-p.3",
     "license": "Apache-2.0",
     "description": "TypeScript is a language for application scale JavaScript development",
     "keywords": [
@@ -12,12 +12,9 @@
         "language",
         "javascript"
     ],
-    "bugs": {
-        "url": "https://github.com/Microsoft/TypeScript/issues"
-    },
     "repository": {
         "type": "git",
-        "url": "https://github.com/Microsoft/TypeScript.git"
+        "url": "https://github.com/laurci/typescript"
     },
     "main": "./lib/typescript.js",
     "typings": "./lib/typescript.d.ts",

@@ -550,7 +550,7 @@ const produceLKG = async () => {
     }
 };
 
-task("LKG", series(lkgPreBuild, parallel(localize, buildTsc, buildServer, buildServices, buildLssl, buildOtherOutputs, buildReleaseTsc), produceLKG));
+task("LKG", series(lkgPreBuild, parallel(localize, buildTsc, buildServer, buildServices, buildLssl, buildOtherOutputs, buildReleaseTsc), generateCompilerLib, produceLKG));
 task("LKG").description = "Makes a new LKG out of the built js files";
 task("LKG").flags = {
     "   --built": "Compile using the built version of the compiler.",
