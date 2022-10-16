@@ -40084,6 +40084,12 @@ namespace ts {
 
             const container = getContainingFunctionOrClassStaticBlock(node);
 
+            if(isChildOfNodeWithKind(node, SyntaxKind.DeferStatement) && container && !isChildOfNodeWithKind(container, SyntaxKind.DeferStatement)) {
+                // is inside a defer statement and inside a function, but the function is not inside a defer statement
+                grammarErrorOnFirstToken(node, Diagnostics.A_return_statement_can_only_be_used_within_a_function_body);
+                return;
+            }
+
             if(container && isMacroDeclarationNode(container)) {
                 // return statements are not checked in macros
                 return;
@@ -40250,6 +40256,11 @@ namespace ts {
                 if (isIdentifier(node.expression) && !node.expression.escapedText) {
                     grammarErrorAfterFirstToken(node, Diagnostics.Line_break_not_permitted_here);
                 }
+            }
+
+            if(isDeferStatement(node.parent) || (isBlock(node.parent) && isDeferStatement(node.parent.parent))) {
+                grammarErrorAfterFirstToken(node, Diagnostics.Throw_statements_cannot_be_used_in_defer_statements_unconditionally);
+                return;
             }
 
             if (node.expression) {
@@ -40603,7 +40614,7 @@ namespace ts {
                     const name = element.expression.escapedText.toString();
 
                     let type: Type | undefined;
-                    
+
                     try {
                         type = getTypeFromTypeNode(element);
                     } catch(ex) {}
@@ -45905,7 +45916,7 @@ namespace ts {
         function checkGrammarBreakOrContinueStatement(node: BreakOrContinueStatement): boolean {
             let current: Node = node;
             while (current) {
-                if (isFunctionLikeOrClassStaticBlockDeclaration(current)) {
+                if (isFunctionLikeOrClassStaticBlockDeclaration(current) || isDeferStatement(current)) {
                     return grammarErrorOnNode(node, Diagnostics.Jump_target_cannot_cross_function_boundary);
                 }
 

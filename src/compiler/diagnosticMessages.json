@@ -1614,6 +1614,10 @@
         "category": "Error",
         "code": 1815
     },
+    "Throw statements cannot be used in defer statements unconditionally": {
+        "category": "Error",
+        "code": 1816
+    },
 
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",
