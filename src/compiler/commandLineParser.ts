@@ -437,9 +437,6 @@ namespace ts {
             name: "listFilesOnly",
             type: "boolean",
             category: Diagnostics.Command_line_Options,
-            affectsSemanticDiagnostics: true,
-            affectsEmit: true,
-            affectsMultiFileEmitBuildInfo: true,
             isCommandLineOnly: true,
             description: Diagnostics.Print_names_of_files_that_are_part_of_the_compilation_and_then_stop_processing,
             defaultValueDescription: false,
@@ -2412,7 +2409,8 @@ namespace ts {
         return config;
     }
 
-    function optionMapToObject(optionMap: ESMap<string, CompilerOptionsValue>): object {
+    /*@internal*/
+    export function optionMapToObject(optionMap: ESMap<string, CompilerOptionsValue>): object {
         return {
             ...arrayFrom(optionMap.entries()).reduce((prev, cur) => ({ ...prev, [cur[0]]: cur[1] }), {}),
         };
@@ -2465,7 +2463,8 @@ namespace ts {
         });
     }
 
-    function serializeCompilerOptions(
+    /* @internal */
+    export function serializeCompilerOptions(
         options: CompilerOptions,
         pathOptions?: { configFilePath: string, useCaseSensitiveFileNames: boolean }
     ): ESMap<string, CompilerOptionsValue> {
