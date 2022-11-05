@@ -1606,7 +1606,7 @@
         "category": "Error",
         "code": 1813
     },
-    "Derived elements must be interfaces": {
+    "Derived elements must be classes": {
         "category": "Error",
         "code": 1814
     },

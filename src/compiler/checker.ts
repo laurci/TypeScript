@@ -8,6 +8,8 @@ namespace ts {
     let nextMergeId = 1;
     let nextFlowId = 1;
 
+    Error.stackTraceLimit = Infinity;
+
     const enum IterationUse {
         AllowsSyncIterablesFlag = 1 << 0,
         AllowsAsyncIterablesFlag = 1 << 1,
@@ -10473,6 +10475,7 @@ namespace ts {
                     else if (type.symbol.flags & (SymbolFlags.Class | SymbolFlags.Interface)) {
                         if (type.symbol.flags & SymbolFlags.Class) {
                             resolveBaseTypesOfClass(type);
+                            resolveDerivedTypesOfClass(type);
                         }
                         if (type.symbol.flags & SymbolFlags.Interface) {
                             resolveBaseTypesOfInterface(type);
@@ -10497,6 +10500,47 @@ namespace ts {
         function getTupleBaseType(type: TupleType) {
             const elementTypes = sameMap(type.typeParameters, (t, i) => type.elementFlags[i] & ElementFlags.Variadic ? getIndexedAccessType(t, numberType) : t);
             return createArrayType(getUnionType(elementTypes || emptyArray), type.readonly);
+        }
+
+        function resolveDerivedTypesOfClass(type: InterfaceType) {
+            if(!type.derivesTypesResolved) {
+                const decl = getClassLikeDeclarationOfSymbol(type.symbol);
+                if(!decl) return;
+
+                const derivesTypeNodes = getClassDerivesHeritageElements(decl);
+                if(derivesTypeNodes.length == 0) return;
+
+                type.resolvedBaseTypes ??= resolvingEmptyArray;
+
+                for(const baseTypeNode of derivesTypeNodes) {
+                    let baseType: Type;
+
+                    const rawBaseConstructorType = checkExpression(baseTypeNode.expression);
+                    if (rawBaseConstructorType.flags & (TypeFlags.Object | TypeFlags.Intersection)) {
+                        resolveStructuredTypeMembers(rawBaseConstructorType as ObjectType);
+                    }
+
+                    const baseConstructorType = getApparentType(rawBaseConstructorType);
+
+                    if (baseConstructorType.flags & (TypeFlags.Object | TypeFlags.Intersection)) {
+                        resolveStructuredTypeMembers(baseConstructorType as ObjectType);
+                    }
+
+                    const originalBaseType = baseConstructorType.symbol ? getDeclaredTypeOfSymbol(baseConstructorType.symbol) : undefined;
+                    if (baseConstructorType.symbol && baseConstructorType.symbol.flags & SymbolFlags.Class &&
+                        areAllOuterTypeParametersApplied(originalBaseType!)) {
+                        baseType = getTypeFromClassOrInterfaceReference(baseTypeNode, baseConstructorType.symbol);
+                    } else {
+                        baseType = baseConstructorType;
+                    }
+
+                    // getReducedType(baseType);
+                    const reducedBaseType = getReducedType(baseType);
+                    type.resolvedBaseTypes = [...type.resolvedBaseTypes, reducedBaseType];
+                }
+
+                type.derivesTypesResolved = true;
+            }
         }
 
         function resolveBaseTypesOfClass(type: InterfaceType) {
@@ -11110,19 +11154,6 @@ namespace ts {
                         }
                     }
                 }
-
-                const classDeclaration = getClassLikeDeclarationOfSymbol(symbol);
-                if(classDeclaration) {
-                    const deriveTypes = getClassDerivesHeritageElements(classDeclaration).map(node => getTypeFromTypeNode(node));
-                    for(const deriveType of deriveTypes) {
-                        const members = getMembersOfSymbol(deriveType.symbol);
-
-                        members.forEach((symbol, key) => {
-                            links[resolutionKind]?.set(key, symbol);
-                        });
-                    }
-                }
-
 
                 const assignments = symbol.assignmentDeclarationMembers;
                 if (assignments) {
@@ -22308,6 +22339,10 @@ namespace ts {
         // we perform type inference (i.e. a type parameter of a generic function). We cache
         // results for union and intersection types for performance reasons.
         function couldContainTypeVariables(type: Type): boolean {
+            if(type.symbol?.escapedName == "Model") {
+                console.log("point");
+            }
+
             const objectFlags = getObjectFlags(type);
             if (objectFlags & ObjectFlags.CouldContainTypeVariablesComputed) {
                 return !!(objectFlags & ObjectFlags.CouldContainTypeVariables);
@@ -40579,8 +40614,8 @@ namespace ts {
                         continue;
                     }
 
-                    if(!(type.symbol.flags & SymbolFlags.Interface)) {
-                        error(element, Diagnostics.Derived_elements_must_be_interfaces);
+                    if(!(type.symbol.flags & SymbolFlags.Class)) {
+                        error(element, Diagnostics.Derived_elements_must_be_classes);
                         hasError = true;
                         continue;
                     }

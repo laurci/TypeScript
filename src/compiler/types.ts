@@ -5880,6 +5880,8 @@ namespace ts {
         resolvedBaseTypes: BaseType[];                    // Resolved base types
         /* @internal */
         baseTypesResolved?: boolean;
+        /* @internal */
+        derivesTypesResolved?: boolean;
     }
 
     // Object type or intersection of object types
