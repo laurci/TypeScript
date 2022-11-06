@@ -1046,6 +1046,9 @@ namespace ts {
         const { rootNames, options, configFileParsingDiagnostics, projectReferences } = createProgramOptions;
         let { oldProgram } = createProgramOptions;
 
+        options.buildConfig = assign({}, options.buildConfig, (options as any).cfg);
+        const buildConfig = options.buildConfig!;
+
         let processingDefaultLibFiles: SourceFile[] | undefined;
         let processingOtherFiles: SourceFile[] | undefined;
         let files: SourceFile[];
@@ -1314,6 +1317,7 @@ namespace ts {
             getSourceFile,
             getSourceFileByPath,
             getSourceFiles: () => files,
+            getBuildConfig: () => buildConfig,
             getMissingFilePaths: () => missingFilePaths!, // TODO: GH#18217
             getModuleResolutionCache: () => moduleResolutionCache,
             getFilesByNameMap: () => filesByName,

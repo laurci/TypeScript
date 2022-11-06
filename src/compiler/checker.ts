@@ -8,8 +8,6 @@ namespace ts {
     let nextMergeId = 1;
     let nextFlowId = 1;
 
-    Error.stackTraceLimit = Infinity;
-
     const enum IterationUse {
         AllowsSyncIterablesFlag = 1 << 0,
         AllowsAsyncIterablesFlag = 1 << 1,
@@ -22339,10 +22337,6 @@ namespace ts {
         // we perform type inference (i.e. a type parameter of a generic function). We cache
         // results for union and intersection types for performance reasons.
         function couldContainTypeVariables(type: Type): boolean {
-            if(type.symbol?.escapedName == "Model") {
-                console.log("point");
-            }
-
             const objectFlags = getObjectFlags(type);
             if (objectFlags & ObjectFlags.CouldContainTypeVariablesComputed) {
                 return !!(objectFlags & ObjectFlags.CouldContainTypeVariables);

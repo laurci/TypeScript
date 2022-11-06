@@ -6113,6 +6113,10 @@
       "category": "Error",
       "code": 6931
     },
+    "List of build configurations to apply to the project.": {
+        "category": "Message",
+        "code": 6932
+    },
 
     "Variable '{0}' implicitly has an '{1}' type.": {
         "category": "Error",

@@ -4410,6 +4410,8 @@ namespace ts {
          */
         getSourceFiles(): readonly SourceFile[];
 
+        getBuildConfig(): BuildConfigMap;
+
         /**
          * Get a list of file names that were passed to 'createProgram' or referenced in a
          * program source file but could not be located.
@@ -6573,7 +6575,10 @@ namespace ts {
         FixedChunkSize,
     }
 
-    export type CompilerOptionsValue = string | number | boolean | (string | number)[] | string[] | MapLike<string[]> | PluginImport[] | ProjectReference[] | null | undefined;
+    export type BuildConfigValue = string | number | boolean;
+    export type BuildConfigMap = { [key: string]: BuildConfigValue };
+
+    export type CompilerOptionsValue = string | number | boolean | (string | number)[] | string[] | MapLike<string[]> | PluginImport[] | ProjectReference[] | BuildConfigMap | null | undefined;
 
     export interface CompilerOptions {
         /*@internal*/ all?: boolean;
@@ -6705,6 +6710,9 @@ namespace ts {
 
         /* @internal */ metaprogram?: boolean;
 
+
+        buildConfig?: BuildConfigMap;
+
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
     }
 
@@ -6816,6 +6824,7 @@ namespace ts {
         Standard,
         JSX
     }
+
 
     /** Either a parsed command line or a parsed tsconfig.json */
     export interface ParsedCommandLine {
