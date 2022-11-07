@@ -154,4 +154,30 @@ namespace ts {
             return visitEachChild(sourceFile, visitor, context);
         };
     }
+
+    export function transformOperatorOverloading(context: TransformationContext) {
+        return (sourceFile: SourceFile) => {
+            const visitor = (node: Node): VisitResult<Node> => {
+                let newNode: Node = node;
+
+                if(isBinaryExpression(node)) {
+                    const operator = node.left.metaFacts?.operator;
+                    if(operator) {
+                        newNode = factory.createCallExpression(
+                            factory.createPropertyAccessExpression(
+                                node.left,
+                                operator
+                            ),
+                            [],
+                            [node.right]
+                        )
+                    }
+                }
+
+                return visitEachChild(newNode, visitor, context);
+            };
+
+            return visitEachChild(sourceFile, visitor, context);
+        };
+    }
 }

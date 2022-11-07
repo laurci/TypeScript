@@ -34676,6 +34676,77 @@ namespace ts {
             return checkBinaryLikeExpressionWorker(left, operatorToken, right, leftType, rightType, errorNode);
         }
 
+        function operatorToMethodName(operator: SyntaxKind): string | undefined {
+            switch (operator) {
+                case SyntaxKind.PlusToken:
+                    return "plus"
+                case SyntaxKind.PlusEqualsToken:
+                    return "plusEquals";
+                case SyntaxKind.MinusToken:
+                    return "minus";
+                case SyntaxKind.MinusEqualsToken:
+                    return "minusEquals";
+                case SyntaxKind.AsteriskToken:
+                    return "multiply";
+                case SyntaxKind.AsteriskEqualsToken:
+                    return "multiplyEquals";
+                case SyntaxKind.SlashToken:
+                    return "divide";
+                case SyntaxKind.SlashEqualsToken:
+                    return "divideEquals";
+                case SyntaxKind.PercentToken:
+                    return "modulo";
+                case SyntaxKind.PercentEqualsToken:
+                    return "moduloEquals";
+                case SyntaxKind.LessThanToken:
+                    return "lessThan";
+                case SyntaxKind.LessThanEqualsToken:
+                    return "lessThanOrEqual";
+                case SyntaxKind.GreaterThanToken:
+                    return "greaterThan";
+                case SyntaxKind.GreaterThanEqualsToken:
+                    return "greaterThanOrEqual";
+                case SyntaxKind.EqualsEqualsToken:
+                    return "equals";
+                case SyntaxKind.EqualsEqualsEqualsToken:
+                    return "strictEquals";
+                case SyntaxKind.ExclamationEqualsEqualsToken:
+                    return "strictNotEquals";
+                case SyntaxKind.ExclamationEqualsToken:
+                    return "notEquals";
+                case SyntaxKind.AmpersandToken:
+                    return "bitwiseAnd";
+                case SyntaxKind.AmpersandEqualsToken:
+                    return "bitwiseAndEquals";
+                case SyntaxKind.BarToken:
+                    return "bitwiseOr";
+                case SyntaxKind.BarEqualsToken:
+                    return "bitwiseOrEquals";
+                case SyntaxKind.CaretToken:
+                    return "bitwiseXor";
+                case SyntaxKind.CaretEqualsToken:
+                    return "bitwiseXorEquals";
+                case SyntaxKind.LessThanLessThanToken:
+                    return "shiftLeft";
+                case SyntaxKind.LessThanLessThanEqualsToken:
+                    return "shiftLeftEquals";
+                case SyntaxKind.GreaterThanGreaterThanToken:
+                    return "shiftRight";
+                case SyntaxKind.GreaterThanGreaterThanEqualsToken:
+                    return "shiftRightEquals";
+                case SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
+                    return "shiftRightUnsigned";
+                case SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
+                    return "shiftRightUnsignedEquals";
+                case SyntaxKind.InKeyword:
+                    return "in";
+                case SyntaxKind.AsteriskAsteriskToken:
+                    return "exponentiate";
+                case SyntaxKind.AsteriskAsteriskEqualsToken:
+                    return "exponentiateEquals";
+            }
+        }
+
         function checkBinaryLikeExpressionWorker(
             left: Expression,
             operatorToken: Node,
@@ -34685,6 +34756,34 @@ namespace ts {
             errorNode?: Node
         ): Type {
             const operator = operatorToken.kind;
+
+            const operatorMethodName = operatorToMethodName(operator);
+            if(operatorMethodName && leftType.flags & TypeFlags.Object) {
+                const leftMembers = getMembersOfSymbol(leftType.symbol);
+                const methodSymbol = leftMembers.get(escapeLeadingUnderscores(operatorMethodName));
+                const signatures = getSignaturesOfSymbol(methodSymbol);
+
+                const signature = signatures.find(x => {
+                    const firstParam = x.parameters[0];
+                    if(!firstParam) return false;
+
+                    const firtParamType = getTypeOfSymbol(firstParam);
+
+                    if(isTypeAssignableTo(rightType, firtParamType)) {
+                        return true;
+                    }
+
+                    return false;
+                });
+
+                if(signature) {
+                    const returnType = getReturnTypeOfSignature(signature);
+                    left.metaFacts ??= {};
+                    left.metaFacts.operator = operatorMethodName;
+                    return returnType;
+                }
+            }
+
             switch (operator) {
                 case SyntaxKind.AsteriskToken:
                 case SyntaxKind.AsteriskAsteriskToken:

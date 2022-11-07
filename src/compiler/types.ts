@@ -881,6 +881,10 @@ namespace ts {
     /* @internal */
     export type NodeId = number;
 
+    export interface MetaFacts {
+        operator?: string;
+    }
+
     export interface Node extends ReadonlyTextRange {
         readonly kind: SyntaxKind;
         readonly flags: NodeFlags;
@@ -897,6 +901,7 @@ namespace ts {
         /* @internal */ emitNode?: EmitNode;                  // Associated EmitNode (initialized by transforms)
         /* @internal */ contextualType?: Type;                // Used to temporarily assign a contextual type during overload resolution
         /* @internal */ inferenceContext?: InferenceContext;  // Inference context for contextual type
+        /* @internal */ metaFacts?: MetaFacts;
     }
 
     export interface JSDocContainer {
