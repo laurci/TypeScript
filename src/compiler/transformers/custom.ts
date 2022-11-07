@@ -54,20 +54,20 @@ namespace ts {
                 }
 
                 if(isClassDeclaration(node)) {
-                    return transformClassDerivesMacros(context, statementPatcher, node);
+                    return transformClassDerivesMacros(context, statementPatcher, visitEachChild(node, visitor, context));
                 }
 
                 if(isMacroCallExpressionNode(node)) {
                     const binding = getMacroBinding("function", node);
                     if(binding) {
-                        return transformCallExpressionMacro(context, statementPatcher, node);
+                        return transformCallExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
                     }
                 }
 
                 if(isMacroTaggedTemplateExpressionNode(node)) {
                     const binding = getMacroBinding("taggedTemplate", node);
                     if(binding) {
-                        return transformTaggedTemplateExpressionMacro(context, statementPatcher, node);
+                        return transformTaggedTemplateExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
                     }
                 }
 
