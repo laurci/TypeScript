@@ -35001,6 +35001,8 @@ namespace ts {
                         if (!isInDiag2657) error(left, Diagnostics.Left_side_of_comma_operator_is_unused_and_has_no_side_effects);
                     }
                     return rightType;
+                case SyntaxKind.PointerToken:
+                    return createArrayType(numberType);
 
                 default:
                     return Debug.fail();

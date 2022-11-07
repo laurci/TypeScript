@@ -375,6 +375,10 @@ namespace ts {
             return visitNode(cbNode, node.asteriskToken) ||
                 visitNode(cbNode, node.expression);
         },
+        [SyntaxKind.RangeExpression]: function forEachChildInRangeExpression<T>(node: RangeExpression, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
+            return visitNode(cbNode, node.left) ||
+                visitNode(cbNode, node.right);
+        },
         [SyntaxKind.AwaitExpression]: function forEachChildInAwaitExpression<T>(node: AwaitExpression, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
             return visitNode(cbNode, node.expression);
         },
@@ -2497,7 +2501,7 @@ namespace ts {
 
         function isHeritageClauseExtendsOrImplementsKeyword(): boolean {
             if (token() === SyntaxKind.ImplementsKeyword ||
-                token() === SyntaxKind.ExtendsKeyword || 
+                token() === SyntaxKind.ExtendsKeyword ||
                 token() === SyntaxKind.DerivesKeyword) {
 
                 return lookAhead(nextTokenIsStartOfExpression);
@@ -4584,6 +4588,10 @@ namespace ts {
                 return arrowExpression;
             }
 
+            if(isRangeExpression()) {
+                return parseRangeExpression();
+            }
+
             // Now try to see if we're in production '1', '2' or '3'.  A conditional expression can
             // start with a LogicalOrExpression, while the assignment productions can only start with
             // LeftHandSideExpressions.
@@ -4615,6 +4623,37 @@ namespace ts {
 
             // It wasn't an assignment or a lambda.  This is a conditional expression:
             return parseConditionalExpressionRest(expr, pos, allowReturnTypeInArrowFunction);
+        }
+
+        function isRangeExpression(): boolean {
+
+            return lookAhead(() => {
+                if(![SyntaxKind.OpenBracketToken, SyntaxKind.OpenParenToken].includes(token())) {
+                    return false;
+                }
+
+                nextToken();
+                if(![SyntaxKind.Identifier, SyntaxKind.NumericLiteral].includes(token())) {
+                    return false;
+                }
+
+                nextToken();
+                if(token() !== SyntaxKind.CommaToken) {
+                    return false;
+                }
+
+                nextToken();
+                if(![SyntaxKind.Identifier, SyntaxKind.NumericLiteral].includes(token())) {
+                    return false;
+                }
+
+                nextToken();
+                if(![SyntaxKind.CloseBracketToken, SyntaxKind.CloseParenToken].includes(token())) {
+                    return false;
+                }
+
+                return true;
+            });
         }
 
         function isYieldExpression(): boolean {
@@ -4674,6 +4713,35 @@ namespace ts {
                 // the start of an expression, then this is just a simple "yield" expression.
                 return finishNode(factory.createYieldExpression(/*asteriskToken*/ undefined, /*expression*/ undefined), pos);
             }
+        }
+
+        function parseRangeExpression() {
+            let left: Expression;
+            let right: Expression;
+
+            let leftParam = token();
+            console.log(leftParam);
+            nextToken();
+
+            if(token() === SyntaxKind.Identifier) {
+                left = parseIdentifier();
+            } else {
+                left = parseLiteralNode();
+            }
+
+            parseExpected(SyntaxKind.CommaToken);
+
+            if(token() === SyntaxKind.Identifier) {
+                right = parseIdentifier();
+            } else {
+                right = parseLiteralNode();
+            }
+
+            const rightParam = token();
+            console.log(rightParam);
+            nextToken();
+
+            return factory.createBinaryExpression(left, SyntaxKind.PointerToken, right);
         }
 
         function parseSimpleArrowFunctionExpression(pos: number, identifier: Identifier, allowReturnTypeInArrowFunction: boolean, asyncModifier?: NodeArray<Modifier> | undefined): ArrowFunction {
@@ -7130,7 +7198,7 @@ namespace ts {
             const node = factory.createFunctionDeclaration(modifiers, asteriskToken, name, typeParameters, parameters, type, body);
             (node as Mutable<FunctionDeclaration>).illegalDecorators = decorators;
             const decl = withJSDoc(finishNode(node, pos), hasJSDoc);
-            
+
             if(isMacroDeclarationNode(decl)) {
                 tryBindDeriveMacroNode(decl);
             }

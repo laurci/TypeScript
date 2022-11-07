@@ -272,6 +272,7 @@ namespace ts {
         ConditionalExpression,
         TemplateExpression,
         YieldExpression,
+        RangeExpression,
         SpreadElement,
         ClassExpression,
         OmittedExpression,
@@ -1027,6 +1028,7 @@ namespace ts {
         | ConditionalExpression
         | TemplateExpression
         | YieldExpression
+        | RangeExpression
         | SpreadElement
         | ClassExpression
         | ExpressionWithTypeArguments
@@ -2245,6 +2247,16 @@ namespace ts {
         readonly kind: SyntaxKind.YieldExpression;
         readonly asteriskToken?: AsteriskToken;
         readonly expression?: Expression;
+    }
+
+    export interface RangeExpression extends Expression {
+        readonly kind: SyntaxKind.RangeExpression;
+        readonly leftOpen: boolean;
+        readonly left: Expression;
+        readonly rightOpen: boolean;
+        readonly right: Expression;
+        readonly openToken: SyntaxKind.OpenBracketToken | SyntaxKind.OpenParenToken;
+        readonly closeToken: SyntaxKind.CloseBracketToken | SyntaxKind.CloseParenToken;
     }
 
     export interface SyntheticExpression extends Expression {
@@ -7950,6 +7962,8 @@ namespace ts {
         createYieldExpression(asteriskToken: undefined, expression: Expression | undefined): YieldExpression;
         /* @internal */ createYieldExpression(asteriskToken: AsteriskToken | undefined, expression: Expression | undefined): YieldExpression; // eslint-disable-line @typescript-eslint/unified-signatures
         updateYieldExpression(node: YieldExpression, asteriskToken: AsteriskToken | undefined, expression: Expression | undefined): YieldExpression;
+        createRangeExpression(openToken: SyntaxKind.OpenBracketToken | SyntaxKind.OpenParenToken, left: Expression, right: Expression, closeToken: SyntaxKind.CloseBracketToken | SyntaxKind.CloseParenToken): RangeExpression;
+        updateRangeExpression(node: RangeExpression, openToken: SyntaxKind.OpenBracketToken | SyntaxKind.OpenParenToken, left: Expression, right: Expression, closeToken: SyntaxKind.CloseBracketToken | SyntaxKind.CloseParenToken): RangeExpression;
         createSpreadElement(expression: Expression): SpreadElement;
         updateSpreadElement(node: SpreadElement, expression: Expression): SpreadElement;
         createClassExpression(modifiers: readonly ModifierLike[] | undefined, name: string | Identifier | undefined, typeParameters: readonly TypeParameterDeclaration[] | undefined, heritageClauses: readonly HeritageClause[] | undefined, members: readonly ClassElement[]): ClassExpression;
