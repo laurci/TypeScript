@@ -28,31 +28,41 @@ namespace ts {
         );
     }
 
-    export function transformMetaprogramReferences(context: TransformationContext) {
+    export function transformMetaprogramImports(context: TransformationContext) {
         const Path = require("path") as typeof import("path");
 
         const options = context.getCompilerOptions();
         const metaprogramSourceFiles = getMetaprogramSourceFiles();
 
         return (sourceFile: SourceFile) => {
-            const statementPatcher = new SourceFileStatementsPatcher();
+            if(options.metaprogram) return sourceFile;
 
             const visitor = (node: Node): VisitResult<Node> => {
-                if(!options.metaprogram) {
-                    // remove imports to files that import "compiler" (ignore type imports)
-                    if(isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
-                        if(isStringLiteral(node.moduleSpecifier)) {
-                            if(pathIsRelative(node.moduleSpecifier.text)) {
-                                const importPath = Path.join(Path.dirname(sourceFile.fileName), node.moduleSpecifier.text);
+                // remove imports to files that import "compiler" (ignore type imports)
+                if(isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
+                    if(isStringLiteral(node.moduleSpecifier)) {
+                        if(pathIsRelative(node.moduleSpecifier.text)) {
+                            const importPath = Path.join(Path.dirname(sourceFile.fileName), node.moduleSpecifier.text);
 
-                                if(metaprogramSourceFiles.includes(importPath + ".ts") || metaprogramSourceFiles.includes(importPath + ".tsx")) {
-                                    return undefined;
-                                }
+                            if(metaprogramSourceFiles.includes(importPath + ".ts") || metaprogramSourceFiles.includes(importPath + ".tsx")) {
+                                return undefined;
                             }
                         }
                     }
                 }
 
+                return visitEachChild(node, visitor, context);
+            };
+
+            return visitEachChild(sourceFile, visitor, context);
+        };
+    }
+
+    export function transformMetaprogramReferences(context: TransformationContext) {
+        return (sourceFile: SourceFile) => {
+            const statementPatcher = new SourceFileStatementsPatcher();
+
+            const visitor = (node: Node): VisitResult<Node> => {
                 if(isClassDeclaration(node)) {
                     return transformClassDerivesMacros(context, statementPatcher, visitEachChild(node, visitor, context));
                 }

@@ -49,6 +49,7 @@ namespace ts {
         transformers.push(transformOperatorOverloading);
         transformers.push(transformDeferStatements);
         transformers.push(transformMetaprogramReferences);
+        transformers.push(transformMetaprogramImports);
 
         transformers.push(transformTypeScript);
         transformers.push(transformLegacyDecorators);
