@@ -29,22 +29,23 @@ namespace ts {
     }
 
     export function transformMetaprogramImports(context: TransformationContext) {
-        const Path = require("path") as typeof import("path");
-
         const options = context.getCompilerOptions();
         const metaprogramSourceFiles = getMetaprogramSourceFiles();
 
         return (sourceFile: SourceFile) => {
             if(options.metaprogram) return sourceFile;
 
+            const host = getCurrentCompilerHost();
+
             const visitor = (node: Node): VisitResult<Node> => {
                 // remove imports to files that import "compiler" (ignore type imports)
                 if(isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
                     if(isStringLiteral(node.moduleSpecifier)) {
-                        if(pathIsRelative(node.moduleSpecifier.text)) {
-                            const importPath = Path.join(Path.dirname(sourceFile.fileName), node.moduleSpecifier.text);
+                        const resolvedModule = resolveModuleName(node.moduleSpecifier.text, sourceFile.fileName, options, host);
+                        const importPath = resolvedModule.resolvedModule?.resolvedFileName;
 
-                            if(metaprogramSourceFiles.includes(importPath + ".ts") || metaprogramSourceFiles.includes(importPath + ".tsx")) {
+                        if(importPath) {
+                            if(metaprogramSourceFiles.includes(importPath)) {
                                 return undefined;
                             }
                         }

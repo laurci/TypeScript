@@ -1395,9 +1395,12 @@ namespace ts {
 
         if(options.metaprogram) {
             (globalThis as any).__ts_meta_program = program;
+            (globalThis as any).__ts_meta_host = host;
         }
         else {
             (globalThis as any).__ts_program = program;
+            (globalThis as any).__ts_host = host;
+
         }
 
         return program;

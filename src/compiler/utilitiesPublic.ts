@@ -6,6 +6,13 @@ namespace ts {
         return program;
     }
 
+    export function getCurrentCompilerHost(): CompilerHost {
+        const host = (globalThis as any).__ts_host;
+        if(!host) throw new Error("Could not get current compiler host!");
+
+        return host;
+    }
+
     export function getBuildConfig(): BuildConfigMap {
         const program = getCurrentProgram();
         return program.getBuildConfig();
