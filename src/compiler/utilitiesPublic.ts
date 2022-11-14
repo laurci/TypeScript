@@ -2,8 +2,20 @@ namespace ts {
     export function getCurrentProgram(): Program {
         const program = (globalThis as any).__ts_program;
         if(!program) throw new Error("Could not get current program!");
-        
+
         return program;
+    }
+
+    export function getCurrentCompilerHost(): CompilerHost {
+        const host = (globalThis as any).__ts_host;
+        if(!host) throw new Error("Could not get current compiler host!");
+
+        return host;
+    }
+
+    export function getBuildConfig(): BuildConfigMap {
+        const program = getCurrentProgram();
+        return program.getBuildConfig();
     }
 
     export function isExternalModuleNameRelative(moduleName: string): boolean {

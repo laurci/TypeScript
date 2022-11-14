@@ -437,9 +437,6 @@ namespace ts {
             name: "listFilesOnly",
             type: "boolean",
             category: Diagnostics.Command_line_Options,
-            affectsSemanticDiagnostics: true,
-            affectsEmit: true,
-            affectsMultiFileEmitBuildInfo: true,
             isCommandLineOnly: true,
             description: Diagnostics.Print_names_of_files_that_are_part_of_the_compilation_and_then_stop_processing,
             defaultValueDescription: false,
@@ -955,6 +952,23 @@ namespace ts {
             affectsModuleResolution: true,
             category: Diagnostics.Modules,
             description: Diagnostics.List_of_file_name_suffixes_to_search_when_resolving_a_module,
+        },
+
+        // Build config
+        {
+            name: "buildConfig",
+            type: "object",
+            isTSConfigOnly: true,
+            category: Diagnostics.COMMON_COMPILER_OPTIONS,
+            description: Diagnostics.List_of_build_configurations_to_apply_to_the_project,
+        },
+
+        {
+            name: "cfg",
+            type: "object",
+            isCommandLineOnly: true,
+            category: Diagnostics.COMMON_COMPILER_OPTIONS,
+            description: Diagnostics.List_of_build_configurations_to_apply_to_the_project,
         },
 
         // Source Maps
@@ -1563,6 +1577,32 @@ namespace ts {
         }
     }
 
+    /* @internal */
+    export function parseKeyValueTypeOption(_opt: CommandLineOption, value = "", _errors: Push<Diagnostic>): { name: string; value: string | number | boolean } | undefined {
+        value = trimString(value);
+        if(startsWith(value, "-")) {
+            return undefined;
+        }
+
+        if (value === "") {
+            return undefined;
+        }
+
+        const [name, assignment] = value.split("=").map(x => x.trim()).filter(x => x.length > 0);
+        if (!name || !assignment) {
+            return undefined;
+        }
+
+        const assignmentValue =
+            !isNaN(parseInt(assignment)) ? parseInt(assignment) :
+            !isNaN(parseFloat(assignment)) ? parseFloat(assignment) :
+            ["true", "yes"].includes(assignment.toLowerCase()) ? true :
+            ["false", "no"].includes(assignment.toLowerCase()) ? false :
+            assignment;
+
+        return { name, value: assignmentValue };
+    }
+
     /*@internal*/
     export interface OptionsBase {
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
@@ -1605,6 +1645,7 @@ namespace ts {
         const errors: Diagnostic[] = [];
 
         parseStrings(commandLine);
+
         return {
             options,
             watchOptions,
@@ -1735,6 +1776,21 @@ namespace ts {
                         if (result) {
                             i++;
                         }
+                        break;
+                    case "object":
+                        const obj = parseKeyValueTypeOption(opt, args[i], errors);
+                        if(obj) {
+                            let existing: BuildConfigMap = options[opt.name] as BuildConfigMap ?? {};
+
+                            if(typeof existing == "object") {
+                                existing[obj.name] = obj.value;
+                            }
+
+                            options[opt.name] = existing;
+
+                            i++;
+                        }
+
                         break;
                     // If not a primitive, the possible types are specified in what is effectively a map of options.
                     default:
@@ -2412,7 +2468,8 @@ namespace ts {
         return config;
     }
 
-    function optionMapToObject(optionMap: ESMap<string, CompilerOptionsValue>): object {
+    /*@internal*/
+    export function optionMapToObject(optionMap: ESMap<string, CompilerOptionsValue>): object {
         return {
             ...arrayFrom(optionMap.entries()).reduce((prev, cur) => ({ ...prev, [cur[0]]: cur[1] }), {}),
         };
@@ -2465,7 +2522,8 @@ namespace ts {
         });
     }
 
-    function serializeCompilerOptions(
+    /* @internal */
+    export function serializeCompilerOptions(
         options: CompilerOptions,
         pathOptions?: { configFilePath: string, useCaseSensitiveFileNames: boolean }
     ): ESMap<string, CompilerOptionsValue> {
@@ -3020,6 +3078,7 @@ namespace ts {
                     raw.compileOnSave = baseRaw.compileOnSave;
                 }
                 ownConfig.options = assign({}, extendedConfig.options, ownConfig.options);
+                ownConfig.options.buildConfig = assign({}, extendedConfig.options?.buildConfig, ownConfig.options.buildConfig);
                 ownConfig.watchOptions = ownConfig.watchOptions && extendedConfig.watchOptions ?
                     assign({}, extendedConfig.watchOptions, ownConfig.watchOptions) :
                     ownConfig.watchOptions || extendedConfig.watchOptions;

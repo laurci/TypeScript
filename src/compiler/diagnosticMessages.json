@@ -1606,7 +1606,7 @@
         "category": "Error",
         "code": 1813
     },
-    "Derived elements must be interfaces": {
+    "Derived elements must be classes": {
         "category": "Error",
         "code": 1814
     },
@@ -2329,7 +2329,7 @@
         "category": "Error",
         "code": 2473
     },
-    "const enum member initializers can only contain literal values and other computed enum values.": {
+    "const enum member initializers must be constant expressions.": {
         "category": "Error",
         "code": 2474
     },
@@ -2552,10 +2552,6 @@
     "A function returning 'never' cannot have a reachable end point.": {
         "category": "Error",
         "code": 2534
-    },
-    "Enum type '{0}' has members with initializers that are not literals.": {
-        "category": "Error",
-        "code": 2535
     },
     "Type '{0}' cannot be used to index type '{1}'.": {
         "category": "Error",
@@ -6121,6 +6117,10 @@
       "category": "Error",
       "code": 6931
     },
+    "List of build configurations to apply to the project.": {
+        "category": "Message",
+        "code": 6932
+    },
 
     "Variable '{0}' implicitly has an '{1}' type.": {
         "category": "Error",
@@ -7554,7 +7554,7 @@
         "category": "Error",
         "code": 18032
     },
-    "Only numeric enums can have computed members, but this expression has type '{0}'. If you do not need exhaustiveness checks, consider using an object literal instead.": {
+    "Type '{0}' is not assignable to type '{1}' as required for computed enum member values.": {
         "category": "Error",
         "code": 18033
     },

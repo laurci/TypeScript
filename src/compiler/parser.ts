@@ -2498,7 +2498,7 @@ namespace ts {
 
         function isHeritageClauseExtendsOrImplementsKeyword(): boolean {
             if (token() === SyntaxKind.ImplementsKeyword ||
-                token() === SyntaxKind.ExtendsKeyword || 
+                token() === SyntaxKind.ExtendsKeyword ||
                 token() === SyntaxKind.DerivesKeyword) {
 
                 return lookAhead(nextTokenIsStartOfExpression);
@@ -7154,7 +7154,7 @@ namespace ts {
             const node = factory.createFunctionDeclaration(modifiers, asteriskToken, name, typeParameters, parameters, type, body);
             (node as Mutable<FunctionDeclaration>).illegalDecorators = decorators;
             const decl = withJSDoc(finishNode(node, pos), hasJSDoc);
-            
+
             if(isMacroDeclarationNode(decl)) {
                 tryBindDeriveMacroNode(decl);
             }

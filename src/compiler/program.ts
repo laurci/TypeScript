@@ -63,14 +63,16 @@ namespace ts {
     }
 
     /*@internal*/
-    export function createCompilerHostWorker(options: CompilerOptions, setParentNodes?: boolean, system = sys): CompilerHost {
-        const existingDirectories = new Map<string, boolean>();
-        const getCanonicalFileName = createGetCanonicalFileName(system.useCaseSensitiveFileNames);
-        function getSourceFile(fileName: string, languageVersionOrOptions: ScriptTarget | CreateSourceFileOptions, onError?: (message: string) => void): SourceFile | undefined {
+    export function createGetSourceFile(
+        readFile: ProgramHost<any>["readFile"],
+        getCompilerOptions: () => CompilerOptions,
+        setParentNodes: boolean | undefined
+    ): CompilerHost["getSourceFile"] {
+        return (fileName, languageVersionOrOptions, onError) => {
             let text: string | undefined;
             try {
                 performance.mark("beforeIORead");
-                text = compilerHost.readFile(fileName);
+                text = readFile(fileName, getCompilerOptions().charset);
                 performance.mark("afterIORead");
                 performance.measure("I/O Read", "beforeIORead", "afterIORead");
             }
@@ -81,8 +83,46 @@ namespace ts {
                 text = "";
             }
             return text !== undefined ? createSourceFile(fileName, text, languageVersionOrOptions, setParentNodes) : undefined;
-        }
+        };
+    }
 
+    /*@internal*/
+    export function createWriteFileMeasuringIO(
+        actualWriteFile: (path: string, data: string, writeByteOrderMark: boolean) => void,
+        createDirectory: (path: string) => void,
+        directoryExists: (path: string) => boolean
+    ): CompilerHost["writeFile"] {
+        return (fileName, data, writeByteOrderMark, onError) => {
+            try {
+                performance.mark("beforeIOWrite");
+
+                // NOTE: If patchWriteFileEnsuringDirectory has been called,
+                // the system.writeFile will do its own directory creation and
+                // the ensureDirectoriesExist call will always be redundant.
+                writeFileEnsuringDirectories(
+                    fileName,
+                    data,
+                    writeByteOrderMark,
+                    actualWriteFile,
+                    createDirectory,
+                    directoryExists
+                );
+
+                performance.mark("afterIOWrite");
+                performance.measure("I/O Write", "beforeIOWrite", "afterIOWrite");
+            }
+            catch (e) {
+                if (onError) {
+                    onError(e.message);
+                }
+            }
+        };
+    }
+
+    /*@internal*/
+    export function createCompilerHostWorker(options: CompilerOptions, setParentNodes?: boolean, system = sys): CompilerHost {
+        const existingDirectories = new Map<string, boolean>();
+        const getCanonicalFileName = createGetCanonicalFileName(system.useCaseSensitiveFileNames);
         function directoryExists(directoryPath: string): boolean {
             if (existingDirectories.has(directoryPath)) {
                 return true;
@@ -94,31 +134,6 @@ namespace ts {
             return false;
         }
 
-        function writeFile(fileName: string, data: string, writeByteOrderMark: boolean, onError?: (message: string) => void) {
-            try {
-                performance.mark("beforeIOWrite");
-
-                // NOTE: If patchWriteFileEnsuringDirectory has been called,
-                // the system.writeFile will do its own directory creation and
-                // the ensureDirectoriesExist call will always be redundant.
-                writeFileEnsuringDirectories(
-                    fileName,
-                    data,
-                    writeByteOrderMark,
-                    (path, data, writeByteOrderMark) => system.writeFile(path, data, writeByteOrderMark),
-                    path => (compilerHost.createDirectory || system.createDirectory)(path),
-                    path => directoryExists(path));
-
-                performance.mark("afterIOWrite");
-                performance.measure("I/O Write", "beforeIOWrite", "afterIOWrite");
-            }
-            catch (e) {
-                if (onError) {
-                    onError(e.message);
-                }
-            }
-        }
-
         function getDefaultLibLocation(): string {
             return getDirectoryPath(normalizePath(system.getExecutingFilePath()));
         }
@@ -126,10 +141,14 @@ namespace ts {
         const newLine = getNewLineCharacter(options, () => system.newLine);
         const realpath = system.realpath && ((path: string) => system.realpath!(path));
         const compilerHost: CompilerHost = {
-            getSourceFile,
+            getSourceFile: createGetSourceFile(fileName => compilerHost.readFile(fileName), () => options, setParentNodes),
             getDefaultLibLocation,
             getDefaultLibFileName: options => combinePaths(getDefaultLibLocation(), getDefaultLibFileName(options)),
-            writeFile,
+            writeFile: createWriteFileMeasuringIO(
+                (path, data, writeByteOrderMark) => system.writeFile(path, data, writeByteOrderMark),
+                path => (compilerHost.createDirectory || system.createDirectory)(path),
+                path => directoryExists(path),
+            ),
             getCurrentDirectory: memoize(() => system.getCurrentDirectory()),
             useCaseSensitiveFileNames: () => system.useCaseSensitiveFileNames,
             getCanonicalFileName,
@@ -168,10 +187,10 @@ namespace ts {
         const originalDirectoryExists = host.directoryExists;
         const originalCreateDirectory = host.createDirectory;
         const originalWriteFile = host.writeFile;
-        const readFileCache = new Map<string, string | false>();
-        const fileExistsCache = new Map<string, boolean>();
-        const directoryExistsCache = new Map<string, boolean>();
-        const sourceFileCache = new Map<string, SourceFile>();
+        const readFileCache = new Map<Path, string | false>();
+        const fileExistsCache = new Map<Path, boolean>();
+        const directoryExistsCache = new Map<Path, boolean>();
+        const sourceFileCache = new Map<SourceFile["impliedNodeFormat"], ESMap<Path, SourceFile>>();
 
         const readFileWithCache = (fileName: string): string | undefined => {
             const key = toPath(fileName);
@@ -196,14 +215,16 @@ namespace ts {
             return setReadFileCache(key, fileName);
         };
 
-        const getSourceFileWithCache: CompilerHost["getSourceFile"] | undefined = getSourceFile ? (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
+        const getSourceFileWithCache: CompilerHost["getSourceFile"] | undefined = getSourceFile ? (fileName, languageVersionOrOptions, onError, shouldCreateNewSourceFile) => {
             const key = toPath(fileName);
-            const value = sourceFileCache.get(key);
+            const impliedNodeFormat: SourceFile["impliedNodeFormat"] = typeof languageVersionOrOptions === "object" ? languageVersionOrOptions.impliedNodeFormat : undefined;
+            const forImpliedNodeFormat = sourceFileCache.get(impliedNodeFormat);
+            const value = forImpliedNodeFormat?.get(key);
             if (value) return value;
 
-            const sourceFile = getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
+            const sourceFile = getSourceFile(fileName, languageVersionOrOptions, onError, shouldCreateNewSourceFile);
             if (sourceFile && (isDeclarationFileName(fileName) || fileExtensionIs(fileName, Extension.Json))) {
-                sourceFileCache.set(key, sourceFile);
+                sourceFileCache.set(impliedNodeFormat, (forImpliedNodeFormat || new Map()).set(key, sourceFile));
             }
             return sourceFile;
         } : undefined;
@@ -225,13 +246,15 @@ namespace ts {
                 const value = readFileCache.get(key);
                 if (value !== undefined && value !== data) {
                     readFileCache.delete(key);
-                    sourceFileCache.delete(key);
+                    sourceFileCache.forEach(map => map.delete(key));
                 }
                 else if (getSourceFileWithCache) {
-                    const sourceFile = sourceFileCache.get(key);
-                    if (sourceFile && sourceFile.text !== data) {
-                        sourceFileCache.delete(key);
-                    }
+                    sourceFileCache.forEach(map => {
+                        const sourceFile = map.get(key);
+                        if (sourceFile && sourceFile.text !== data) {
+                            map.delete(key);
+                        }
+                    });
                 }
                 originalWriteFile.call(host, fileName, data, ...rest);
             };
@@ -1023,6 +1046,9 @@ namespace ts {
         const { rootNames, options, configFileParsingDiagnostics, projectReferences } = createProgramOptions;
         let { oldProgram } = createProgramOptions;
 
+        options.buildConfig = assign({}, options.buildConfig, (options as any).cfg);
+        const buildConfig = options.buildConfig!;
+
         let processingDefaultLibFiles: SourceFile[] | undefined;
         let processingOtherFiles: SourceFile[] | undefined;
         let files: SourceFile[];
@@ -1291,6 +1317,7 @@ namespace ts {
             getSourceFile,
             getSourceFileByPath,
             getSourceFiles: () => files,
+            getBuildConfig: () => buildConfig,
             getMissingFilePaths: () => missingFilePaths!, // TODO: GH#18217
             getModuleResolutionCache: () => moduleResolutionCache,
             getFilesByNameMap: () => filesByName,
@@ -1368,9 +1395,12 @@ namespace ts {
 
         if(options.metaprogram) {
             (globalThis as any).__ts_meta_program = program;
+            (globalThis as any).__ts_meta_host = host;
         }
         else {
             (globalThis as any).__ts_program = program;
+            (globalThis as any).__ts_host = host;
+
         }
 
         return program;
@@ -2005,7 +2035,8 @@ namespace ts {
                     const path = toPath(fileName);
                     const sourceFile = getSourceFileByPath(path);
                     return sourceFile ? sourceFile.text : filesByName.has(path) ? undefined : host.readFile(path);
-                }
+                },
+                host,
             );
         }
 
@@ -4295,7 +4326,12 @@ namespace ts {
     }
 
     /* @internal */
-    export function createPrependNodes(projectReferences: readonly ProjectReference[] | undefined, getCommandLine: (ref: ProjectReference, index: number) => ParsedCommandLine | undefined, readFile: (path: string) => string | undefined) {
+    export function createPrependNodes(
+        projectReferences: readonly ProjectReference[] | undefined,
+        getCommandLine: (ref: ProjectReference, index: number) => ParsedCommandLine | undefined,
+        readFile: (path: string) => string | undefined,
+        host: CompilerHost,
+    ) {
         if (!projectReferences) return emptyArray;
         let nodes: InputFiles[] | undefined;
         for (let i = 0; i < projectReferences.length; i++) {
@@ -4307,7 +4343,7 @@ namespace ts {
                 if (!out) continue;
 
                 const { jsFilePath, sourceMapFilePath, declarationFilePath, declarationMapPath, buildInfoPath } = getOutputPathsForBundle(resolvedRefOpts.options, /*forceDtsPaths*/ true);
-                const node = createInputFiles(readFile, jsFilePath!, sourceMapFilePath, declarationFilePath!, declarationMapPath, buildInfoPath);
+                const node = createInputFilesWithFilePaths(readFile, jsFilePath!, sourceMapFilePath, declarationFilePath!, declarationMapPath, buildInfoPath, host, resolvedRefOpts.options);
                 (nodes || (nodes = [])).push(node);
             }
         }

@@ -2,7 +2,7 @@
     "name": "@laurci/typescript",
     "author": "Laurentiu Ciobanu",
     "homepage": "https://www.typescriptlang.org/",
-    "version": "4.9.0-p.4",
+    "version": "5.0.0-p.5",
     "license": "Apache-2.0",
     "description": "TypeScript is a language for application scale JavaScript development",
     "keywords": [
@@ -15,6 +15,9 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/laurci/typescript"
+    },
+    "publishConfig": {
+        "access": "public"
     },
     "main": "./lib/typescript.js",
     "typings": "./lib/typescript.d.ts",

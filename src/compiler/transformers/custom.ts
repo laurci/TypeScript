@@ -28,46 +28,57 @@ namespace ts {
         );
     }
 
-    export function transformMetaprogramReferences(context: TransformationContext) {
-        const Path = require("path") as typeof import("path");
-
+    export function transformMetaprogramImports(context: TransformationContext) {
         const options = context.getCompilerOptions();
         const metaprogramSourceFiles = getMetaprogramSourceFiles();
 
         return (sourceFile: SourceFile) => {
-            const statementPatcher = new SourceFileStatementsPatcher();
+            if(options.metaprogram) return sourceFile;
+
+            const host = getCurrentCompilerHost();
 
             const visitor = (node: Node): VisitResult<Node> => {
-                if(!options.metaprogram) {
-                    // remove imports to files that import "compiler" (ignore type imports)
-                    if(isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
-                        if(isStringLiteral(node.moduleSpecifier)) {
-                            if(pathIsRelative(node.moduleSpecifier.text)) {
-                                const importPath = Path.join(Path.dirname(sourceFile.fileName), node.moduleSpecifier.text);
+                // remove imports to files that import "compiler" (ignore type imports)
+                if(isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
+                    if(isStringLiteral(node.moduleSpecifier)) {
+                        const resolvedModule = resolveModuleName(node.moduleSpecifier.text, sourceFile.fileName, options, host);
+                        const importPath = resolvedModule.resolvedModule?.resolvedFileName;
 
-                                if(metaprogramSourceFiles.includes(importPath + ".ts") || metaprogramSourceFiles.includes(importPath + ".tsx")) {
-                                    return undefined;
-                                }
+                        if(importPath) {
+                            if(metaprogramSourceFiles.includes(importPath)) {
+                                return undefined;
                             }
                         }
                     }
                 }
 
+                return visitEachChild(node, visitor, context);
+            };
+
+            return visitEachChild(sourceFile, visitor, context);
+        };
+    }
+
+    export function transformMetaprogramReferences(context: TransformationContext) {
+        return (sourceFile: SourceFile) => {
+            const statementPatcher = new SourceFileStatementsPatcher();
+
+            const visitor = (node: Node): VisitResult<Node> => {
                 if(isClassDeclaration(node)) {
-                    return transformClassDerivesMacros(context, statementPatcher, node);
+                    return transformClassDerivesMacros(context, statementPatcher, visitEachChild(node, visitor, context));
                 }
 
                 if(isMacroCallExpressionNode(node)) {
                     const binding = getMacroBinding("function", node);
                     if(binding) {
-                        return transformCallExpressionMacro(context, statementPatcher, node);
+                        return transformCallExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
                     }
                 }
 
                 if(isMacroTaggedTemplateExpressionNode(node)) {
                     const binding = getMacroBinding("taggedTemplate", node);
                     if(binding) {
-                        return transformTaggedTemplateExpressionMacro(context, statementPatcher, node);
+                        return transformTaggedTemplateExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
                     }
                 }
 
@@ -149,6 +160,32 @@ namespace ts {
                 }
 
                 return visitEachChild(node, visitor, context);
+            };
+
+            return visitEachChild(sourceFile, visitor, context);
+        };
+    }
+
+    export function transformOperatorOverloading(context: TransformationContext) {
+        return (sourceFile: SourceFile) => {
+            const visitor = (node: Node): VisitResult<Node> => {
+                let newNode: Node = node;
+
+                if(isBinaryExpression(node)) {
+                    const operator = node.left.metaFacts?.operator;
+                    if(operator) {
+                        newNode = factory.createCallExpression(
+                            factory.createPropertyAccessExpression(
+                                node.left,
+                                operator
+                            ),
+                            [],
+                            [node.right]
+                        )
+                    }
+                }
+
+                return visitEachChild(newNode, visitor, context);
             };
 
             return visitEachChild(sourceFile, visitor, context);

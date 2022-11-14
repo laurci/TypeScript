@@ -881,6 +881,10 @@ namespace ts {
     /* @internal */
     export type NodeId = number;
 
+    export interface MetaFacts {
+        operator?: string;
+    }
+
     export interface Node extends ReadonlyTextRange {
         readonly kind: SyntaxKind;
         readonly flags: NodeFlags;
@@ -897,6 +901,7 @@ namespace ts {
         /* @internal */ emitNode?: EmitNode;                  // Associated EmitNode (initialized by transforms)
         /* @internal */ contextualType?: Type;                // Used to temporarily assign a contextual type during overload resolution
         /* @internal */ inferenceContext?: InferenceContext;  // Inference context for contextual type
+        /* @internal */ metaFacts?: MetaFacts;
     }
 
     export interface JSDocContainer {
@@ -3951,8 +3956,8 @@ namespace ts {
     // is distinguished from a regular type by a flags value of zero. Incomplete type
     // objects are internal to the getFlowTypeOfReference function and never escape it.
     export interface IncompleteType {
-        flags: TypeFlags;  // No flags set
-        type: Type;        // The type marked incomplete
+        flags: TypeFlags | 0;  // No flags set
+        type: Type;            // The type marked incomplete
     }
 
     export interface AmdDependency {
@@ -4409,6 +4414,8 @@ namespace ts {
          * Get a list of files in the program
          */
         getSourceFiles(): readonly SourceFile[];
+
+        getBuildConfig(): BuildConfigMap;
 
         /**
          * Get a list of file names that were passed to 'createProgram' or referenced in a
@@ -5611,7 +5618,7 @@ namespace ts {
         String          = 1 << 2,
         Number          = 1 << 3,
         Boolean         = 1 << 4,
-        Enum            = 1 << 5,
+        Enum            = 1 << 5,   // Numeric computed enum member value
         BigInt          = 1 << 6,
         StringLiteral   = 1 << 7,
         NumberLiteral   = 1 << 8,
@@ -5880,6 +5887,8 @@ namespace ts {
         resolvedBaseTypes: BaseType[];                    // Resolved base types
         /* @internal */
         baseTypesResolved?: boolean;
+        /* @internal */
+        derivesTypesResolved?: boolean;
     }
 
     // Object type or intersection of object types
@@ -5958,9 +5967,12 @@ namespace ts {
 
     export interface TupleType extends GenericType {
         elementFlags: readonly ElementFlags[];
-        minLength: number;  // Number of required or variadic elements
-        fixedLength: number;  // Number of initial required or optional elements
-        hasRestElement: boolean;  // True if tuple has any rest or variadic elements
+        /** Number of required or variadic elements */
+        minLength: number;
+        /** Number of initial required or optional elements */
+        fixedLength: number;
+        /** True if tuple has any rest or variadic elements */
+        hasRestElement: boolean;
         combinedFlags: ElementFlags;
         readonly: boolean;
         labeledElementDeclarations?: readonly (NamedTupleMember | ParameterDeclaration)[];
@@ -6568,7 +6580,10 @@ namespace ts {
         FixedChunkSize,
     }
 
-    export type CompilerOptionsValue = string | number | boolean | (string | number)[] | string[] | MapLike<string[]> | PluginImport[] | ProjectReference[] | null | undefined;
+    export type BuildConfigValue = string | number | boolean;
+    export type BuildConfigMap = { [key: string]: BuildConfigValue };
+
+    export type CompilerOptionsValue = string | number | boolean | (string | number)[] | string[] | MapLike<string[]> | PluginImport[] | ProjectReference[] | BuildConfigMap | null | undefined;
 
     export interface CompilerOptions {
         /*@internal*/ all?: boolean;
@@ -6700,6 +6715,9 @@ namespace ts {
 
         /* @internal */ metaprogram?: boolean;
 
+
+        buildConfig?: BuildConfigMap;
+
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
     }
 
@@ -6811,6 +6829,7 @@ namespace ts {
         Standard,
         JSX
     }
+
 
     /** Either a parsed command line or a parsed tsconfig.json */
     export interface ParsedCommandLine {
@@ -7261,6 +7280,7 @@ namespace ts {
         // For testing:
         /*@internal*/ disableUseFileVersionAsSignature?: boolean;
         /*@internal*/ storeFilesChangingSignatureDuringEmit?: boolean;
+        /*@internal*/ getBuildInfo?(fileName: string, configFilePath: string | undefined): BuildInfo | undefined;
     }
 
     /** true if --out otherwise source file name */

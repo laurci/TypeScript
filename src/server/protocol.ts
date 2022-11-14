@@ -3487,6 +3487,8 @@ namespace ts.server.protocol {
         readonly disableLineTextInReferences?: boolean;
     }
 
+    export type BuildConfigValue = string | number | boolean;
+    export type BuildConfigMap = { [key: string]: BuildConfigValue };
     export interface CompilerOptions {
         allowJs?: boolean;
         allowSyntheticDefaultImports?: boolean;
@@ -3557,6 +3559,9 @@ namespace ts.server.protocol {
         types?: string[];
         /** Paths used to used to compute primary types search locations */
         typeRoots?: string[];
+
+        buildConfig?: BuildConfigMap;
+
         [option: string]: CompilerOptionsValue | undefined;
     }
 
