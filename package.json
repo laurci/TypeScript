@@ -16,6 +16,9 @@
         "type": "git",
         "url": "https://github.com/laurci/typescript"
     },
+    "publishConfig": {
+        "access": "public"
+    },
     "main": "./lib/typescript.js",
     "typings": "./lib/typescript.d.ts",
     "bin": {
