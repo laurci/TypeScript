@@ -34,7 +34,7 @@ namespace ts {
             });
         }
 
-        prepend(node: Statement) {  
+        prepend(node: Statement) {
             this.before.push({
                 node
             });
@@ -187,6 +187,34 @@ namespace ts {
         if(!hooks) return node;
 
         return executeTransformHook(hooks, context, node, statementPatcher);
+    }
+
+    export function transformUsingStatementMacro(context: TransformationContext, statementPatcher: SourceFileStatementsPatcher, node: UseStatement): Node | undefined {
+        let result = node as Node;
+        const expressions = [...node.expressions].reverse();
+
+        for(let expression of expressions) {
+            if(!isMacroCallExpressionNode(expression)) continue;
+
+            const declaration = getMacroBinding("function", expression);
+            if(!declaration) return node;
+
+            // TODO: fix this
+            const hooks = getHooksForMacro<"function", UsingMacro>(declaration, (hooks) => ({
+                declaration,
+                ...createTransformMacroApi(hooks),
+                ...createCheckApi(hooks)
+            }) as any);
+
+            if(!hooks) continue;
+
+            const hookResult = executeTransformHook(hooks, context, result, statementPatcher);
+            if(!hookResult) return undefined;
+
+            result = hookResult;
+        }
+
+        return result;
     }
 
     export function transformClassDerivesMacros(context: TransformationContext, statementPatcher: SourceFileStatementsPatcher, node: ClassDeclaration): ClassDeclaration | undefined {

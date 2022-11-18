@@ -465,9 +465,8 @@ namespace ts {
             return visitNode(cbNode, node.expression) ||
                 visitNode(cbNode, node.statement);
         },
-        [SyntaxKind.UseStatement]: function forEachChildInUseStatement<T>(node: UseStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
-            const expr = node.expressions.map(expr => visitNode(cbNode, expr));
-            return expr.reduce((prev, curr) => prev || curr, expr[0]) || visitNode(cbNode, node.body);
+        [SyntaxKind.UseStatement]: function forEachChildInUseStatement<T>(node: UseStatement, cbNode: (node: Node) => T | undefined, cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
+            return  visitNode(cbNode, node.body) || visitNodes(cbNode, cbNodes, factory.createNodeArray(node.expressions));
         },
         [SyntaxKind.DeferStatement]: function forEachChildInDeferStatement<T>(node: DeferStatement, cbNode: (node: Node) => T | undefined, _cbNodes?: (nodes: NodeArray<Node>) => T | undefined): T | undefined {
             return visitNode(cbNode, node.body);
@@ -6355,7 +6354,7 @@ namespace ts {
         function reduceUseExpression(expr: Expression): Expression[] {
             if(isBinaryExpression(expr)) {
                 if(!isCommaToken(expr.operatorToken)) {
-                    parseErrorAtCurrentToken(Diagnostics.Expected_list_of_comma_separated_identifiers);
+                    parseErrorAtCurrentToken(Diagnostics.Expected_list_of_comma_separated_function_macro_invocations);
                     return [];
                 }
                 return [...reduceUseExpression(expr.left), ...reduceUseExpression(expr.right)];
@@ -6374,8 +6373,6 @@ namespace ts {
             const hasBracket = scanner.getToken() === SyntaxKind.OpenBracketToken;
 
             if(hasBracket) {
-                console.log("got multiple");
-
                 const openBracketParsed = parseExpected(SyntaxKind.OpenBracketToken);
 
                 const openBracketPosition = scanner.getTokenPos();
@@ -6388,15 +6385,16 @@ namespace ts {
                 expressions = reduceUseExpression(parseExpression());
             }
 
-            let body: Block | undefined;
-            const hasBlock  = scanner.getToken() === SyntaxKind.OpenBraceToken;
-            if(hasBlock) {
-                body = parseBlock(/*ignoreMissingOpenBrace*/ false);
+            for(let expression of expressions) {
+                if(!isMacroCallExpressionNode(expression)) {
+                    parseErrorAt(expression.pos, expression.end, Diagnostics.Expected_list_of_comma_separated_function_macro_invocations);
+                }
             }
 
-            console.log(body);
+            parseExpected(SyntaxKind.ColonToken);
 
-            // FIXME: better handle of expression statement
+            const body = parseBlock(false);
+
             return withJSDoc(finishNode(factory.createUseStatement(expressions, body), pos), hasJSDoc);
         }
 

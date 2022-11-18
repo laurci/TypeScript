@@ -1618,7 +1618,7 @@
         "category": "Error",
         "code": 1816
     },
-    "Expected list of comma separated identifiers": {
+    "Expected list of comma separated function macro invocations": {
         "category": "Error",
         "code": 1817
     },

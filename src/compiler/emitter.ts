@@ -3116,7 +3116,8 @@ namespace ts {
             emitEmbeddedStatement(node, node.statement);
         }
 
-        function emitUseStatement(_node: UseStatement) {
+        function emitUseStatement(node: UseStatement) {
+            emit(node.body);
         }
 
         function emitDeferStatement(_node: DeferStatement) {
