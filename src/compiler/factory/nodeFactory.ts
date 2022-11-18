@@ -3562,17 +3562,17 @@ namespace ts {
         }
 
         // @api
-        function createUseStatement(expressions: Expression[], body: Statement) {
+        function createUseStatement(expressions: Expression[], body: Block) {
             const node = createBaseNode<UseStatement>(SyntaxKind.UseStatement);
             node.expressions = expressions;
-            node.body = asEmbeddedStatement(body);
+            node.body = body;
             node.transformFlags |= propagateChildFlags(node.body);
 
             return node;
         }
 
         // @api
-        function updateUseStatement(node: UseStatement, expressions: Expression[], body: Statement) {
+        function updateUseStatement(node: UseStatement, expressions: Expression[], body: Block) {
             return node.expressions.length !== expressions.length || node.expressions.some(expr => !expressions.includes(expr)) || node.body !== body
                 ? update(createUseStatement(expressions, body), node)
                 : node;

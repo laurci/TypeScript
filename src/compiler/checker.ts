@@ -32360,7 +32360,8 @@ namespace ts {
             const macroTypeName = capitalize(type);
             const expectedTypeName = capitalize(`${type}Macro`);
 
-            const typeName = thisTypeNode.typeName.escapedText.toString();
+            let typeName = thisTypeNode.typeName.escapedText.toString();
+            if(typeName == "UsingMacro") typeName = "FunctionMacro";
 
             if(typeName !== expectedTypeName) {
                 error(node, Diagnostics.Macro_declaration_has_0_context_and_can_t_be_invoked_as_a_1_macro, typeName, macroTypeName);
@@ -45184,7 +45185,7 @@ namespace ts {
                 case SyntaxKind.MissingDeclaration:
                     return true;
                 default:
-                    if (node.parent.kind === SyntaxKind.ModuleBlock || node.parent.kind === SyntaxKind.SourceFile) {
+                    if (node.parent.kind === SyntaxKind.ModuleBlock || node.parent.kind === SyntaxKind.SourceFile || node.parent.kind == SyntaxKind.UseStatement) {
                         return false;
                     }
                     switch (node.kind) {

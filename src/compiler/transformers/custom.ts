@@ -68,11 +68,15 @@ namespace ts {
                     return transformClassDerivesMacros(context, statementPatcher, visitEachChild(node, visitor, context));
                 }
 
-                if(isMacroCallExpressionNode(node)) {
-                    const binding = getMacroBinding("function", node);
-                    if(binding) {
-                        return transformCallExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
-                    }
+                if(isUseStatement(node)) {
+                    return transformUsingStatementMacro(context, statementPatcher, visitEachChild(node, visitor, context));
+                }
+
+                if(isMacroCallExpressionNode(node) && node.parent.kind !== SyntaxKind.UseStatement) {
+                    // const binding = getMacroBinding("function", node);
+                    // if(binding) {
+                    return transformCallExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
+                    // }
                 }
 
                 if(isMacroTaggedTemplateExpressionNode(node)) {

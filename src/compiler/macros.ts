@@ -89,6 +89,10 @@ namespace ts {
 
     }
 
+    export interface UsingMacro extends BaseMacro, MacroWithDeclaration<FunctionMacroDeclaration>, MacroWithTransformApi<UseStatement>, MacroWithCheckApi<MacroCallExpressionNode> {
+
+    }
+
     export type MacroExecutor<T extends BaseMacro = BaseMacro> = (this: T, ...args: any[]) => void;
 
     const macroBindings = new Map<Node, MacroDeclaration>();

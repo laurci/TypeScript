@@ -1618,6 +1618,10 @@
         "category": "Error",
         "code": 1816
     },
+    "Expected list of comma separated function macro invocations": {
+        "category": "Error",
+        "code": 1817
+    },
 
     "The types of '{0}' are incompatible between these types.": {
         "category": "Error",

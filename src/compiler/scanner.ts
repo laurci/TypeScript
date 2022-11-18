@@ -158,7 +158,7 @@ namespace ts {
         void: SyntaxKind.VoidKeyword,
         while: SyntaxKind.WhileKeyword,
         with: SyntaxKind.WithKeyword,
-        use: SyntaxKind.UseKeyword,
+        using: SyntaxKind.UseKeyword,
         defer: SyntaxKind.DeferKeyword,
         macro: SyntaxKind.MacroKeyword,
         yield: SyntaxKind.YieldKeyword,
