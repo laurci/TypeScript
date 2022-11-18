@@ -89,7 +89,7 @@ namespace ts {
 
     }
 
-    export interface UsingMacro extends BaseMacro, MacroWithDeclaration<FunctionMacroDeclaration>, MacroWithTransformApi<UseStatement>, MacroWithCheckApi<UseStatement> {
+    export interface UsingMacro extends BaseMacro, MacroWithDeclaration<FunctionMacroDeclaration>, MacroWithTransformApi<UseStatement>, MacroWithCheckApi<MacroCallExpressionNode> {
 
     }
 
