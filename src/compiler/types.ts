@@ -6718,6 +6718,8 @@ namespace ts {
 
         buildConfig?: BuildConfigMap;
 
+        script?: string;
+
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
     }
 

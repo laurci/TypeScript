@@ -59,6 +59,39 @@ namespace ts {
         };
     }
 
+    export function transformScript(context: TransformationContext) {
+        const options = context.getCompilerOptions();
+
+        return (_sourceFile: SourceFile): SourceFile => {
+            if(!options.script) return _sourceFile;
+
+            const program = getCurrentProgram();
+            const fileNames = getMetaprogramSourceFiles();
+            const sourceFiles = fileNames.map(fileName => program.getSourceFile(fileName)!);
+
+            const statementPatcher = new SourceFileStatementsPatcher();
+
+            for(let sourceFile of sourceFiles) {
+                visitEachChild(sourceFile, (node: Node) => {
+                    if(isMacroDeclarationNode(node) && node.name.escapedText == options.script) {
+                        const invoke = factory.createCallExpression(factory.createNonNullExpression(factory.createIdentifier(options.script!)), [], []) as MacroCallExpressionNode;
+                        bindMacro("function", node as MacroDeclarationNode, invoke);
+
+                        transformCallExpressionMacro(context, statementPatcher, invoke);
+
+                        console.log("finished running script", options.script);
+                        process.exit(0);
+                    }
+
+                    return node;
+                }, context);
+
+            }
+
+            throw new Error(`Could not find script "${options.script}"`);
+        }
+    }
+
     export function transformMetaprogramReferences(context: TransformationContext) {
         return (sourceFile: SourceFile) => {
             const statementPatcher = new SourceFileStatementsPatcher();

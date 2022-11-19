@@ -6121,6 +6121,10 @@
         "category": "Message",
         "code": 6932
     },
+    "Script name to run during build": {
+        "category": "Message",
+        "code": 6933
+    },
 
     "Variable '{0}' implicitly has an '{1}' type.": {
         "category": "Error",

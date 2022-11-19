@@ -971,6 +971,14 @@ namespace ts {
             description: Diagnostics.List_of_build_configurations_to_apply_to_the_project,
         },
 
+        {
+            name: "script",
+            type: "string",
+            isCommandLineOnly: true,
+            category: Diagnostics.COMMON_COMPILER_OPTIONS,
+            description: Diagnostics.Script_name_to_run_during_build,
+        },
+
         // Source Maps
         {
             name: "sourceRoot",
