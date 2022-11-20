@@ -97,33 +97,44 @@ namespace ts {
             const statementPatcher = new SourceFileStatementsPatcher();
 
             const visitor = (node: Node): VisitResult<Node> => {
+                let newNode = node;
+
                 if(isClassDeclaration(node)) {
-                    return transformClassDerivesMacros(context, statementPatcher, visitEachChild(node, visitor, context));
+                    const result = transformClassDerivesMacros(context, statementPatcher, node);
+                    if(result) {
+                        newNode = result;
+                    }
                 }
 
                 if(isUseStatement(node)) {
-                    return transformUsingStatementMacro(context, statementPatcher, visitEachChild(node, visitor, context));
+                    const result = transformUsingStatementMacro(context, statementPatcher, node);
+                    if(result) {
+                        newNode = result;
+                    }
                 }
 
                 if(isMacroCallExpressionNode(node) && node.parent.kind !== SyntaxKind.UseStatement) {
-                    // const binding = getMacroBinding("function", node);
-                    // if(binding) {
-                    return transformCallExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
-                    // }
+                    const result = transformCallExpressionMacro(context, statementPatcher, node);
+                    if(result) {
+                        newNode = result;
+                    }
                 }
 
                 if(isMacroTaggedTemplateExpressionNode(node)) {
                     const binding = getMacroBinding("taggedTemplate", node);
                     if(binding) {
-                        return transformTaggedTemplateExpressionMacro(context, statementPatcher, visitEachChild(node, visitor, context));
+                        const result = transformTaggedTemplateExpressionMacro(context, statementPatcher, node);
+                        if(result) {
+                            newNode = result;
+                        }
                     }
                 }
 
-                if(node) {
-                    return visitEachChild(node, visitor, context);
+                if(newNode) {
+                    return visitEachChild(newNode, visitor, context);
                 }
 
-                return node;
+                return newNode;
             };
 
             return statementPatcher.patch(context.factory, visitEachChild(sourceFile, visitor, context));
