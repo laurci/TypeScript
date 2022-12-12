@@ -9,7 +9,7 @@ namespace ts {
             return compileModule(code, filename);
         }, {
             extensions: [".ts", ".tsx"],
-            ignoreNodeModules: true,
+            ignoreNodeModules: false,
         });
     })();
 
@@ -24,11 +24,11 @@ namespace ts {
             metaprogram: true,
             target: ScriptTarget.ES5,
             module: ModuleKind.CommonJS,
-            skipLibCheck: true,
+            skipLibCheck: false,
             skipDefaultLibCheck: true,
             declaration: false,
             jsx: JsxEmit.Preserve,
-            strict: true
+            strict: true,
         };
 
         metaProgram = createProgram({
