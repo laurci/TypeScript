@@ -1,0 +1,19 @@
+size: big
+description: |
+  I love Rust's meta-programming system. Rust macros allow for great developer experience with no performance penalty. However, my other favorite language, TypeScript, does not support compile-time code execution, and compiler plugins will never be a thing. So, I implemented my own system.
+
+  My system allows users to define their own macros using a new keyword. Macros are functions that get called at compile time during transformation and checking. This means macros can generate code and types, which the language server can use for IntelliSense and other code actions.
+
+  I also added other features I wanted in TypeScript:
+
+  - `defer` statements
+  - `derive` implementations for classes
+  - `using` statements
+  - Operator overloading
+  - Custom compiler options
+
+  I have demos for this fork at [https://github.com/laurci/ts-fork-demos](https://github.com/laurci/ts-fork-demos) and a VS Code extension at [https://github.com/laurci/ts-fork-vscode](https://github.com/laurci/ts-fork-vscode).
+tags:
+  - compiler
+  - Typescript
+  - meta-programming
