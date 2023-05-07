@@ -14,7 +14,7 @@ description: |
   - Operator overloading.
   - Custom compiler options (build config).
 
-To help other developers get started with this fork of Typescript, I have created a set of demos, which can be found at [https://github.com/laurci/ts-fork-demos](https://github.com/laurci/ts-fork-demos). I have also developed a VS Code extension that adds syntax highlighting for the new keywords I have introduced. The extension can be found at [https://github.com/laurci/ts-fork-vscode](https://github.com/laurci/ts-fork-vscode).
+  To help other developers get started with this fork of Typescript, I have created a set of demos, which can be found at [https://github.com/laurci/ts-fork-demos](https://github.com/laurci/ts-fork-demos). I have also developed a VS Code extension that adds syntax highlighting for the new keywords I have introduced. The extension can be found at [https://github.com/laurci/ts-fork-vscode](https://github.com/laurci/ts-fork-vscode).
 tags:
   - compiler
   - Typescript
