@@ -1,18 +1,20 @@
 size: big
 description: |
-  I love Rust's meta-programming system. Rust macros allow for great developer experience with no performance penalty. However, my other favorite language, TypeScript, does not support compile-time code execution, and compiler plugins will never be a thing. So, I implemented my own system.
+  I love the meta-programming system that Rust has. Compile-time code execution (Rust macros) allows for some amazing developer experience with 0 performance penalty. 
 
-  My system allows users to define their own macros using a new keyword. Macros are functions that get called at compile time during transformation and checking. This means macros can generate code and types, which the language server can use for IntelliSense and other code actions.
+  Sadly, my other favorite programming language (Typescript) doesn’t support compile-time code execution, and they made it pretty clear that compiler plugins will never be a thing. So, I took matters into my own hands and implemented it myself.
 
-  I also added other features I wanted in TypeScript:
+  This project allows users to define their own macros using a new **********macro********** keyword. Macros are just normal functions that get called at compile time during transformation but also during checking. This means that you can use macros to generate both code that will be emitted in the final output, but also **types** that can be used during development by the language server to provide IntelliSense and the other code actions we are used to (completion, rename a symbol, go to definition, etc.).
 
-  - `defer` statements
-  - `derive` implementations for classes
-  - `using` statements
+  I also implemented other things I always wanted in typescript:
+
+  - `defer` statements: works just like Go’s defer [https://gobyexample.com/defer](https://gobyexample.com/defer) but it can be on any statement/block, not only with functions.
+  - `derive` implementations for classes: works just like `implements` or `extends`, but the implementation is generated with a macro.
+  - `using` statements: works like C#’s using for `Disposable`
   - Operator overloading
-  - Custom compiler options
+  - Custom compiler options (build config)
 
-  I have demos for this fork at [https://github.com/laurci/ts-fork-demos](https://github.com/laurci/ts-fork-demos) and a VS Code extension at [https://github.com/laurci/ts-fork-vscode](https://github.com/laurci/ts-fork-vscode).
+  I also have some demos for this fork: https://github.com/laurci/ts-fork-demos and a VS Code extension that ads syntax highlighting for the new keywords I added https://github.com/laurci/ts-fork-vscode.
 tags:
   - compiler
   - Typescript
